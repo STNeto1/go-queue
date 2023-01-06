@@ -25,6 +25,27 @@ type User struct {
 	Password string `json:"password,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the UserQuery when eager-loading is set.
+	Edges UserEdges `json:"edges"`
+}
+
+// UserEdges holds the relations/edges for other nodes in the graph.
+type UserEdges struct {
+	// Queues holds the value of the queues edge.
+	Queues []*Queue `json:"queues,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// QueuesOrErr returns the Queues value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) QueuesOrErr() ([]*Queue, error) {
+	if e.loadedTypes[0] {
+		return e.Queues, nil
+	}
+	return nil, &NotLoadedError{edge: "queues"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -86,6 +107,11 @@ func (u *User) assignValues(columns []string, values []any) error {
 		}
 	}
 	return nil
+}
+
+// QueryQueues queries the "queues" edge of the User entity.
+func (u *User) QueryQueues() *QueueQuery {
+	return (&UserClient{config: u.config}).QueryQueues(u)
 }
 
 // Update returns a builder for updating this User.

@@ -21,8 +21,15 @@ const (
 	FieldPassword = "password"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
+	// EdgeQueues holds the string denoting the queues edge name in mutations.
+	EdgeQueues = "queues"
 	// Table holds the table name of the user in the database.
 	Table = "users"
+	// QueuesTable is the table that holds the queues relation/edge. The primary key declared below.
+	QueuesTable = "user_queues"
+	// QueuesInverseTable is the table name for the Queue entity.
+	// It exists in this package in order to avoid circular dependency with the "queue" package.
+	QueuesInverseTable = "queues"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -33,6 +40,12 @@ var Columns = []string{
 	FieldPassword,
 	FieldCreatedAt,
 }
+
+var (
+	// QueuesPrimaryKey and QueuesColumn2 are the table columns denoting the
+	// primary key for the queues relation (M2M).
+	QueuesPrimaryKey = []string{"user_id", "queue_id"}
+)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {

@@ -9,25 +9,24 @@ import (
 	"github.com/google/uuid"
 )
 
-// User holds the schema definition for the User entity.
-type User struct {
+// Queue holds the schema definition for the Queue entity.
+type Queue struct {
 	ent.Schema
 }
 
-// Fields of the User.
-func (User) Fields() []ent.Field {
+// Fields of the Queue.
+func (Queue) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).Default(uuid.New),
 		field.String("name"),
-		field.String("email").Unique(),
-		field.String("password"),
+		field.UUID("ref", uuid.UUID{}).Default(uuid.New).Immutable(),
 		field.Time("created_at").Default(time.Now),
 	}
 }
 
-// Edges of the User.
-func (User) Edges() []ent.Edge {
+// Edges of the Queue.
+func (Queue) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("queues", Queue.Type),
+		edge.From("user", User.Type).Ref("queues"),
 	}
 }

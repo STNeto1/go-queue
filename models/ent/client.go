@@ -10,10 +10,12 @@ import (
 
 	"_models/ent/migrate"
 
+	"_models/ent/queue"
 	"_models/ent/user"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 )
 
@@ -22,6 +24,8 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// Queue is the client for interacting with the Queue builders.
+	Queue *QueueClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 }
@@ -37,6 +41,7 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.Queue = NewQueueClient(c.config)
 	c.User = NewUserClient(c.config)
 }
 
@@ -71,6 +76,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	return &Tx{
 		ctx:    ctx,
 		config: cfg,
+		Queue:  NewQueueClient(cfg),
 		User:   NewUserClient(cfg),
 	}, nil
 }
@@ -91,6 +97,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	return &Tx{
 		ctx:    ctx,
 		config: cfg,
+		Queue:  NewQueueClient(cfg),
 		User:   NewUserClient(cfg),
 	}, nil
 }
@@ -98,7 +105,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		User.
+//		Queue.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -120,7 +127,114 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
+	c.Queue.Use(hooks...)
 	c.User.Use(hooks...)
+}
+
+// QueueClient is a client for the Queue schema.
+type QueueClient struct {
+	config
+}
+
+// NewQueueClient returns a client for the Queue from the given config.
+func NewQueueClient(c config) *QueueClient {
+	return &QueueClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `queue.Hooks(f(g(h())))`.
+func (c *QueueClient) Use(hooks ...Hook) {
+	c.hooks.Queue = append(c.hooks.Queue, hooks...)
+}
+
+// Create returns a builder for creating a Queue entity.
+func (c *QueueClient) Create() *QueueCreate {
+	mutation := newQueueMutation(c.config, OpCreate)
+	return &QueueCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Queue entities.
+func (c *QueueClient) CreateBulk(builders ...*QueueCreate) *QueueCreateBulk {
+	return &QueueCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Queue.
+func (c *QueueClient) Update() *QueueUpdate {
+	mutation := newQueueMutation(c.config, OpUpdate)
+	return &QueueUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *QueueClient) UpdateOne(q *Queue) *QueueUpdateOne {
+	mutation := newQueueMutation(c.config, OpUpdateOne, withQueue(q))
+	return &QueueUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *QueueClient) UpdateOneID(id uuid.UUID) *QueueUpdateOne {
+	mutation := newQueueMutation(c.config, OpUpdateOne, withQueueID(id))
+	return &QueueUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Queue.
+func (c *QueueClient) Delete() *QueueDelete {
+	mutation := newQueueMutation(c.config, OpDelete)
+	return &QueueDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *QueueClient) DeleteOne(q *Queue) *QueueDeleteOne {
+	return c.DeleteOneID(q.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *QueueClient) DeleteOneID(id uuid.UUID) *QueueDeleteOne {
+	builder := c.Delete().Where(queue.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &QueueDeleteOne{builder}
+}
+
+// Query returns a query builder for Queue.
+func (c *QueueClient) Query() *QueueQuery {
+	return &QueueQuery{
+		config: c.config,
+	}
+}
+
+// Get returns a Queue entity by its id.
+func (c *QueueClient) Get(ctx context.Context, id uuid.UUID) (*Queue, error) {
+	return c.Query().Where(queue.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *QueueClient) GetX(ctx context.Context, id uuid.UUID) *Queue {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a Queue.
+func (c *QueueClient) QueryUser(q *Queue) *UserQuery {
+	query := &UserQuery{config: c.config}
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := q.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(queue.Table, queue.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, queue.UserTable, queue.UserPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(q.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *QueueClient) Hooks() []Hook {
+	return c.hooks.Queue
 }
 
 // UserClient is a client for the User schema.
@@ -206,6 +320,22 @@ func (c *UserClient) GetX(ctx context.Context, id uuid.UUID) *User {
 		panic(err)
 	}
 	return obj
+}
+
+// QueryQueues queries the queues edge of a User.
+func (c *UserClient) QueryQueues(u *User) *QueueQuery {
+	query := &QueueQuery{config: c.config}
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(queue.Table, queue.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, user.QueuesTable, user.QueuesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
 }
 
 // Hooks returns the client hooks.

@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"_models/ent/queue"
 	"_models/ent/user"
 	"context"
 	"errors"
@@ -65,6 +66,21 @@ func (uc *UserCreate) SetNillableID(u *uuid.UUID) *UserCreate {
 		uc.SetID(*u)
 	}
 	return uc
+}
+
+// AddQueueIDs adds the "queues" edge to the Queue entity by IDs.
+func (uc *UserCreate) AddQueueIDs(ids ...uuid.UUID) *UserCreate {
+	uc.mutation.AddQueueIDs(ids...)
+	return uc
+}
+
+// AddQueues adds the "queues" edges to the Queue entity.
+func (uc *UserCreate) AddQueues(q ...*Queue) *UserCreate {
+	ids := make([]uuid.UUID, len(q))
+	for i := range q {
+		ids[i] = q[i].ID
+	}
+	return uc.AddQueueIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -219,6 +235,25 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := uc.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if nodes := uc.mutation.QueuesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.QueuesTable,
+			Columns: user.QueuesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: queue.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

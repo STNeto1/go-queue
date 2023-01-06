@@ -8,6 +8,19 @@ import (
 )
 
 var (
+	// QueuesColumns holds the columns for the "queues" table.
+	QueuesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "name", Type: field.TypeString},
+		{Name: "ref", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// QueuesTable holds the schema information for the "queues" table.
+	QueuesTable = &schema.Table{
+		Name:       "queues",
+		Columns:    QueuesColumns,
+		PrimaryKey: []*schema.Column{QueuesColumns[0]},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -22,11 +35,40 @@ var (
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
+	// UserQueuesColumns holds the columns for the "user_queues" table.
+	UserQueuesColumns = []*schema.Column{
+		{Name: "user_id", Type: field.TypeUUID},
+		{Name: "queue_id", Type: field.TypeUUID},
+	}
+	// UserQueuesTable holds the schema information for the "user_queues" table.
+	UserQueuesTable = &schema.Table{
+		Name:       "user_queues",
+		Columns:    UserQueuesColumns,
+		PrimaryKey: []*schema.Column{UserQueuesColumns[0], UserQueuesColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "user_queues_user_id",
+				Columns:    []*schema.Column{UserQueuesColumns[0]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "user_queues_queue_id",
+				Columns:    []*schema.Column{UserQueuesColumns[1]},
+				RefColumns: []*schema.Column{QueuesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		QueuesTable,
 		UsersTable,
+		UserQueuesTable,
 	}
 )
 
 func init() {
+	UserQueuesTable.ForeignKeys[0].RefTable = UsersTable
+	UserQueuesTable.ForeignKeys[1].RefTable = QueuesTable
 }

@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"_models/ent/queue"
 	"_models/ent/schema"
 	"_models/ent/user"
 	"time"
@@ -14,6 +15,20 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	queueFields := schema.Queue{}.Fields()
+	_ = queueFields
+	// queueDescRef is the schema descriptor for ref field.
+	queueDescRef := queueFields[2].Descriptor()
+	// queue.DefaultRef holds the default value on creation for the ref field.
+	queue.DefaultRef = queueDescRef.Default.(func() uuid.UUID)
+	// queueDescCreatedAt is the schema descriptor for created_at field.
+	queueDescCreatedAt := queueFields[3].Descriptor()
+	// queue.DefaultCreatedAt holds the default value on creation for the created_at field.
+	queue.DefaultCreatedAt = queueDescCreatedAt.Default.(func() time.Time)
+	// queueDescID is the schema descriptor for id field.
+	queueDescID := queueFields[0].Descriptor()
+	// queue.DefaultID holds the default value on creation for the id field.
+	queue.DefaultID = queueDescID.Default.(func() uuid.UUID)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescCreatedAt is the schema descriptor for created_at field.

@@ -4,6 +4,7 @@ package ent
 
 import (
 	"_models/ent/predicate"
+	"_models/ent/queue"
 	"_models/ent/user"
 	"context"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // UserUpdate is the builder for updating User entities.
@@ -60,9 +62,45 @@ func (uu *UserUpdate) SetNillableCreatedAt(t *time.Time) *UserUpdate {
 	return uu
 }
 
+// AddQueueIDs adds the "queues" edge to the Queue entity by IDs.
+func (uu *UserUpdate) AddQueueIDs(ids ...uuid.UUID) *UserUpdate {
+	uu.mutation.AddQueueIDs(ids...)
+	return uu
+}
+
+// AddQueues adds the "queues" edges to the Queue entity.
+func (uu *UserUpdate) AddQueues(q ...*Queue) *UserUpdate {
+	ids := make([]uuid.UUID, len(q))
+	for i := range q {
+		ids[i] = q[i].ID
+	}
+	return uu.AddQueueIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uu *UserUpdate) Mutation() *UserMutation {
 	return uu.mutation
+}
+
+// ClearQueues clears all "queues" edges to the Queue entity.
+func (uu *UserUpdate) ClearQueues() *UserUpdate {
+	uu.mutation.ClearQueues()
+	return uu
+}
+
+// RemoveQueueIDs removes the "queues" edge to Queue entities by IDs.
+func (uu *UserUpdate) RemoveQueueIDs(ids ...uuid.UUID) *UserUpdate {
+	uu.mutation.RemoveQueueIDs(ids...)
+	return uu
+}
+
+// RemoveQueues removes "queues" edges to Queue entities.
+func (uu *UserUpdate) RemoveQueues(q ...*Queue) *UserUpdate {
+	ids := make([]uuid.UUID, len(q))
+	for i := range q {
+		ids[i] = q[i].ID
+	}
+	return uu.RemoveQueueIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -149,6 +187,60 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := uu.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeTime, value)
 	}
+	if uu.mutation.QueuesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.QueuesTable,
+			Columns: user.QueuesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: queue.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.RemovedQueuesIDs(); len(nodes) > 0 && !uu.mutation.QueuesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.QueuesTable,
+			Columns: user.QueuesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: queue.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.QueuesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.QueuesTable,
+			Columns: user.QueuesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: queue.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, uu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -200,9 +292,45 @@ func (uuo *UserUpdateOne) SetNillableCreatedAt(t *time.Time) *UserUpdateOne {
 	return uuo
 }
 
+// AddQueueIDs adds the "queues" edge to the Queue entity by IDs.
+func (uuo *UserUpdateOne) AddQueueIDs(ids ...uuid.UUID) *UserUpdateOne {
+	uuo.mutation.AddQueueIDs(ids...)
+	return uuo
+}
+
+// AddQueues adds the "queues" edges to the Queue entity.
+func (uuo *UserUpdateOne) AddQueues(q ...*Queue) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(q))
+	for i := range q {
+		ids[i] = q[i].ID
+	}
+	return uuo.AddQueueIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uuo *UserUpdateOne) Mutation() *UserMutation {
 	return uuo.mutation
+}
+
+// ClearQueues clears all "queues" edges to the Queue entity.
+func (uuo *UserUpdateOne) ClearQueues() *UserUpdateOne {
+	uuo.mutation.ClearQueues()
+	return uuo
+}
+
+// RemoveQueueIDs removes the "queues" edge to Queue entities by IDs.
+func (uuo *UserUpdateOne) RemoveQueueIDs(ids ...uuid.UUID) *UserUpdateOne {
+	uuo.mutation.RemoveQueueIDs(ids...)
+	return uuo
+}
+
+// RemoveQueues removes "queues" edges to Queue entities.
+func (uuo *UserUpdateOne) RemoveQueues(q ...*Queue) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(q))
+	for i := range q {
+		ids[i] = q[i].ID
+	}
+	return uuo.RemoveQueueIDs(ids...)
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -318,6 +446,60 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 	}
 	if value, ok := uuo.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeTime, value)
+	}
+	if uuo.mutation.QueuesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.QueuesTable,
+			Columns: user.QueuesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: queue.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.RemovedQueuesIDs(); len(nodes) > 0 && !uuo.mutation.QueuesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.QueuesTable,
+			Columns: user.QueuesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: queue.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.QueuesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   user.QueuesTable,
+			Columns: user.QueuesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: queue.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &User{config: uuo.config}
 	_spec.Assign = _node.assignValues
