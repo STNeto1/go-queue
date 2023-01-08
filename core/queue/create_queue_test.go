@@ -4,6 +4,8 @@ import (
 	"_core/queue"
 	"_models/ent"
 	"context"
+	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +15,7 @@ func createUser(client *ent.Client) (*ent.User, error) {
 	return client.User.
 		Create().
 		SetName("John Doe").
-		SetEmail("some-mail@mail.com").
+		SetEmail(fmt.Sprintf("some-mail-%d@mail.com", rand.Int())).
 		SetPassword("some-password").
 		Save(context.Background())
 }
