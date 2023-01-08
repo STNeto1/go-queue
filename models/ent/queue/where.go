@@ -358,6 +358,34 @@ func HasUserWith(preds ...predicate.User) predicate.Queue {
 	})
 }
 
+// HasMessages applies the HasEdge predicate on the "messages" edge.
+func HasMessages() predicate.Queue {
+	return predicate.Queue(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(MessagesTable, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, MessagesTable, MessagesPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasMessagesWith applies the HasEdge predicate on the "messages" edge with a given conditions (other predicates).
+func HasMessagesWith(preds ...predicate.QueueMessage) predicate.Queue {
+	return predicate.Queue(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(MessagesInverseTable, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, MessagesTable, MessagesPrimaryKey...),
+		)
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Queue) predicate.Queue {
 	return predicate.Queue(func(s *sql.Selector) {

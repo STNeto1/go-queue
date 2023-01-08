@@ -5,6 +5,7 @@ package ent
 import (
 	"_models/ent/predicate"
 	"_models/ent/queue"
+	"_models/ent/queuemessage"
 	"_models/ent/user"
 	"context"
 	"errors"
@@ -26,26 +27,30 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeQueue = "Queue"
-	TypeUser  = "User"
+	TypeQueue        = "Queue"
+	TypeQueueMessage = "QueueMessage"
+	TypeUser         = "User"
 )
 
 // QueueMutation represents an operation that mutates the Queue nodes in the graph.
 type QueueMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *uuid.UUID
-	name          *string
-	ref           *uuid.UUID
-	created_at    *time.Time
-	clearedFields map[string]struct{}
-	user          map[uuid.UUID]struct{}
-	removeduser   map[uuid.UUID]struct{}
-	cleareduser   bool
-	done          bool
-	oldValue      func(context.Context) (*Queue, error)
-	predicates    []predicate.Queue
+	op              Op
+	typ             string
+	id              *uuid.UUID
+	name            *string
+	ref             *uuid.UUID
+	created_at      *time.Time
+	clearedFields   map[string]struct{}
+	user            map[uuid.UUID]struct{}
+	removeduser     map[uuid.UUID]struct{}
+	cleareduser     bool
+	messages        map[uuid.UUID]struct{}
+	removedmessages map[uuid.UUID]struct{}
+	clearedmessages bool
+	done            bool
+	oldValue        func(context.Context) (*Queue, error)
+	predicates      []predicate.Queue
 }
 
 var _ ent.Mutation = (*QueueMutation)(nil)
@@ -314,6 +319,60 @@ func (m *QueueMutation) ResetUser() {
 	m.removeduser = nil
 }
 
+// AddMessageIDs adds the "messages" edge to the QueueMessage entity by ids.
+func (m *QueueMutation) AddMessageIDs(ids ...uuid.UUID) {
+	if m.messages == nil {
+		m.messages = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.messages[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMessages clears the "messages" edge to the QueueMessage entity.
+func (m *QueueMutation) ClearMessages() {
+	m.clearedmessages = true
+}
+
+// MessagesCleared reports if the "messages" edge to the QueueMessage entity was cleared.
+func (m *QueueMutation) MessagesCleared() bool {
+	return m.clearedmessages
+}
+
+// RemoveMessageIDs removes the "messages" edge to the QueueMessage entity by IDs.
+func (m *QueueMutation) RemoveMessageIDs(ids ...uuid.UUID) {
+	if m.removedmessages == nil {
+		m.removedmessages = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.messages, ids[i])
+		m.removedmessages[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMessages returns the removed IDs of the "messages" edge to the QueueMessage entity.
+func (m *QueueMutation) RemovedMessagesIDs() (ids []uuid.UUID) {
+	for id := range m.removedmessages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// MessagesIDs returns the "messages" edge IDs in the mutation.
+func (m *QueueMutation) MessagesIDs() (ids []uuid.UUID) {
+	for id := range m.messages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMessages resets all changes to the "messages" edge.
+func (m *QueueMutation) ResetMessages() {
+	m.messages = nil
+	m.clearedmessages = false
+	m.removedmessages = nil
+}
+
 // Where appends a list predicates to the QueueMutation builder.
 func (m *QueueMutation) Where(ps ...predicate.Queue) {
 	m.predicates = append(m.predicates, ps...)
@@ -466,9 +525,12 @@ func (m *QueueMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *QueueMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.user != nil {
 		edges = append(edges, queue.EdgeUser)
+	}
+	if m.messages != nil {
+		edges = append(edges, queue.EdgeMessages)
 	}
 	return edges
 }
@@ -483,15 +545,24 @@ func (m *QueueMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case queue.EdgeMessages:
+		ids := make([]ent.Value, 0, len(m.messages))
+		for id := range m.messages {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *QueueMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.removeduser != nil {
 		edges = append(edges, queue.EdgeUser)
+	}
+	if m.removedmessages != nil {
+		edges = append(edges, queue.EdgeMessages)
 	}
 	return edges
 }
@@ -506,15 +577,24 @@ func (m *QueueMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case queue.EdgeMessages:
+		ids := make([]ent.Value, 0, len(m.removedmessages))
+		for id := range m.removedmessages {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *QueueMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.cleareduser {
 		edges = append(edges, queue.EdgeUser)
+	}
+	if m.clearedmessages {
+		edges = append(edges, queue.EdgeMessages)
 	}
 	return edges
 }
@@ -525,6 +605,8 @@ func (m *QueueMutation) EdgeCleared(name string) bool {
 	switch name {
 	case queue.EdgeUser:
 		return m.cleareduser
+	case queue.EdgeMessages:
+		return m.clearedmessages
 	}
 	return false
 }
@@ -544,8 +626,727 @@ func (m *QueueMutation) ResetEdge(name string) error {
 	case queue.EdgeUser:
 		m.ResetUser()
 		return nil
+	case queue.EdgeMessages:
+		m.ResetMessages()
+		return nil
 	}
 	return fmt.Errorf("unknown Queue edge %s", name)
+}
+
+// QueueMessageMutation represents an operation that mutates the QueueMessage nodes in the graph.
+type QueueMessageMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *uuid.UUID
+	body           *string
+	content_type   *string
+	status         *string
+	max_retries    *uint
+	addmax_retries *int
+	available_from *time.Time
+	created_at     *time.Time
+	clearedFields  map[string]struct{}
+	queue          map[uuid.UUID]struct{}
+	removedqueue   map[uuid.UUID]struct{}
+	clearedqueue   bool
+	done           bool
+	oldValue       func(context.Context) (*QueueMessage, error)
+	predicates     []predicate.QueueMessage
+}
+
+var _ ent.Mutation = (*QueueMessageMutation)(nil)
+
+// queuemessageOption allows management of the mutation configuration using functional options.
+type queuemessageOption func(*QueueMessageMutation)
+
+// newQueueMessageMutation creates new mutation for the QueueMessage entity.
+func newQueueMessageMutation(c config, op Op, opts ...queuemessageOption) *QueueMessageMutation {
+	m := &QueueMessageMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeQueueMessage,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withQueueMessageID sets the ID field of the mutation.
+func withQueueMessageID(id uuid.UUID) queuemessageOption {
+	return func(m *QueueMessageMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *QueueMessage
+		)
+		m.oldValue = func(ctx context.Context) (*QueueMessage, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().QueueMessage.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withQueueMessage sets the old QueueMessage of the mutation.
+func withQueueMessage(node *QueueMessage) queuemessageOption {
+	return func(m *QueueMessageMutation) {
+		m.oldValue = func(context.Context) (*QueueMessage, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m QueueMessageMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m QueueMessageMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of QueueMessage entities.
+func (m *QueueMessageMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *QueueMessageMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *QueueMessageMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().QueueMessage.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetBody sets the "body" field.
+func (m *QueueMessageMutation) SetBody(s string) {
+	m.body = &s
+}
+
+// Body returns the value of the "body" field in the mutation.
+func (m *QueueMessageMutation) Body() (r string, exists bool) {
+	v := m.body
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBody returns the old "body" field's value of the QueueMessage entity.
+// If the QueueMessage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *QueueMessageMutation) OldBody(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBody is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBody requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBody: %w", err)
+	}
+	return oldValue.Body, nil
+}
+
+// ResetBody resets all changes to the "body" field.
+func (m *QueueMessageMutation) ResetBody() {
+	m.body = nil
+}
+
+// SetContentType sets the "content_type" field.
+func (m *QueueMessageMutation) SetContentType(s string) {
+	m.content_type = &s
+}
+
+// ContentType returns the value of the "content_type" field in the mutation.
+func (m *QueueMessageMutation) ContentType() (r string, exists bool) {
+	v := m.content_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentType returns the old "content_type" field's value of the QueueMessage entity.
+// If the QueueMessage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *QueueMessageMutation) OldContentType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentType: %w", err)
+	}
+	return oldValue.ContentType, nil
+}
+
+// ResetContentType resets all changes to the "content_type" field.
+func (m *QueueMessageMutation) ResetContentType() {
+	m.content_type = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *QueueMessageMutation) SetStatus(s string) {
+	m.status = &s
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *QueueMessageMutation) Status() (r string, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the QueueMessage entity.
+// If the QueueMessage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *QueueMessageMutation) OldStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *QueueMessageMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetMaxRetries sets the "max_retries" field.
+func (m *QueueMessageMutation) SetMaxRetries(u uint) {
+	m.max_retries = &u
+	m.addmax_retries = nil
+}
+
+// MaxRetries returns the value of the "max_retries" field in the mutation.
+func (m *QueueMessageMutation) MaxRetries() (r uint, exists bool) {
+	v := m.max_retries
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMaxRetries returns the old "max_retries" field's value of the QueueMessage entity.
+// If the QueueMessage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *QueueMessageMutation) OldMaxRetries(ctx context.Context) (v uint, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMaxRetries is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMaxRetries requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMaxRetries: %w", err)
+	}
+	return oldValue.MaxRetries, nil
+}
+
+// AddMaxRetries adds u to the "max_retries" field.
+func (m *QueueMessageMutation) AddMaxRetries(u int) {
+	if m.addmax_retries != nil {
+		*m.addmax_retries += u
+	} else {
+		m.addmax_retries = &u
+	}
+}
+
+// AddedMaxRetries returns the value that was added to the "max_retries" field in this mutation.
+func (m *QueueMessageMutation) AddedMaxRetries() (r int, exists bool) {
+	v := m.addmax_retries
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetMaxRetries resets all changes to the "max_retries" field.
+func (m *QueueMessageMutation) ResetMaxRetries() {
+	m.max_retries = nil
+	m.addmax_retries = nil
+}
+
+// SetAvailableFrom sets the "available_from" field.
+func (m *QueueMessageMutation) SetAvailableFrom(t time.Time) {
+	m.available_from = &t
+}
+
+// AvailableFrom returns the value of the "available_from" field in the mutation.
+func (m *QueueMessageMutation) AvailableFrom() (r time.Time, exists bool) {
+	v := m.available_from
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAvailableFrom returns the old "available_from" field's value of the QueueMessage entity.
+// If the QueueMessage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *QueueMessageMutation) OldAvailableFrom(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAvailableFrom is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAvailableFrom requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAvailableFrom: %w", err)
+	}
+	return oldValue.AvailableFrom, nil
+}
+
+// ResetAvailableFrom resets all changes to the "available_from" field.
+func (m *QueueMessageMutation) ResetAvailableFrom() {
+	m.available_from = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *QueueMessageMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *QueueMessageMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the QueueMessage entity.
+// If the QueueMessage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *QueueMessageMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *QueueMessageMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// AddQueueIDs adds the "queue" edge to the Queue entity by ids.
+func (m *QueueMessageMutation) AddQueueIDs(ids ...uuid.UUID) {
+	if m.queue == nil {
+		m.queue = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.queue[ids[i]] = struct{}{}
+	}
+}
+
+// ClearQueue clears the "queue" edge to the Queue entity.
+func (m *QueueMessageMutation) ClearQueue() {
+	m.clearedqueue = true
+}
+
+// QueueCleared reports if the "queue" edge to the Queue entity was cleared.
+func (m *QueueMessageMutation) QueueCleared() bool {
+	return m.clearedqueue
+}
+
+// RemoveQueueIDs removes the "queue" edge to the Queue entity by IDs.
+func (m *QueueMessageMutation) RemoveQueueIDs(ids ...uuid.UUID) {
+	if m.removedqueue == nil {
+		m.removedqueue = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.queue, ids[i])
+		m.removedqueue[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedQueue returns the removed IDs of the "queue" edge to the Queue entity.
+func (m *QueueMessageMutation) RemovedQueueIDs() (ids []uuid.UUID) {
+	for id := range m.removedqueue {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// QueueIDs returns the "queue" edge IDs in the mutation.
+func (m *QueueMessageMutation) QueueIDs() (ids []uuid.UUID) {
+	for id := range m.queue {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetQueue resets all changes to the "queue" edge.
+func (m *QueueMessageMutation) ResetQueue() {
+	m.queue = nil
+	m.clearedqueue = false
+	m.removedqueue = nil
+}
+
+// Where appends a list predicates to the QueueMessageMutation builder.
+func (m *QueueMessageMutation) Where(ps ...predicate.QueueMessage) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// Op returns the operation name.
+func (m *QueueMessageMutation) Op() Op {
+	return m.op
+}
+
+// Type returns the node type of this mutation (QueueMessage).
+func (m *QueueMessageMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *QueueMessageMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.body != nil {
+		fields = append(fields, queuemessage.FieldBody)
+	}
+	if m.content_type != nil {
+		fields = append(fields, queuemessage.FieldContentType)
+	}
+	if m.status != nil {
+		fields = append(fields, queuemessage.FieldStatus)
+	}
+	if m.max_retries != nil {
+		fields = append(fields, queuemessage.FieldMaxRetries)
+	}
+	if m.available_from != nil {
+		fields = append(fields, queuemessage.FieldAvailableFrom)
+	}
+	if m.created_at != nil {
+		fields = append(fields, queuemessage.FieldCreatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *QueueMessageMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case queuemessage.FieldBody:
+		return m.Body()
+	case queuemessage.FieldContentType:
+		return m.ContentType()
+	case queuemessage.FieldStatus:
+		return m.Status()
+	case queuemessage.FieldMaxRetries:
+		return m.MaxRetries()
+	case queuemessage.FieldAvailableFrom:
+		return m.AvailableFrom()
+	case queuemessage.FieldCreatedAt:
+		return m.CreatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *QueueMessageMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case queuemessage.FieldBody:
+		return m.OldBody(ctx)
+	case queuemessage.FieldContentType:
+		return m.OldContentType(ctx)
+	case queuemessage.FieldStatus:
+		return m.OldStatus(ctx)
+	case queuemessage.FieldMaxRetries:
+		return m.OldMaxRetries(ctx)
+	case queuemessage.FieldAvailableFrom:
+		return m.OldAvailableFrom(ctx)
+	case queuemessage.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown QueueMessage field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *QueueMessageMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case queuemessage.FieldBody:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBody(v)
+		return nil
+	case queuemessage.FieldContentType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentType(v)
+		return nil
+	case queuemessage.FieldStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case queuemessage.FieldMaxRetries:
+		v, ok := value.(uint)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMaxRetries(v)
+		return nil
+	case queuemessage.FieldAvailableFrom:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAvailableFrom(v)
+		return nil
+	case queuemessage.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown QueueMessage field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *QueueMessageMutation) AddedFields() []string {
+	var fields []string
+	if m.addmax_retries != nil {
+		fields = append(fields, queuemessage.FieldMaxRetries)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *QueueMessageMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case queuemessage.FieldMaxRetries:
+		return m.AddedMaxRetries()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *QueueMessageMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case queuemessage.FieldMaxRetries:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddMaxRetries(v)
+		return nil
+	}
+	return fmt.Errorf("unknown QueueMessage numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *QueueMessageMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *QueueMessageMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *QueueMessageMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown QueueMessage nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *QueueMessageMutation) ResetField(name string) error {
+	switch name {
+	case queuemessage.FieldBody:
+		m.ResetBody()
+		return nil
+	case queuemessage.FieldContentType:
+		m.ResetContentType()
+		return nil
+	case queuemessage.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case queuemessage.FieldMaxRetries:
+		m.ResetMaxRetries()
+		return nil
+	case queuemessage.FieldAvailableFrom:
+		m.ResetAvailableFrom()
+		return nil
+	case queuemessage.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown QueueMessage field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *QueueMessageMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.queue != nil {
+		edges = append(edges, queuemessage.EdgeQueue)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *QueueMessageMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case queuemessage.EdgeQueue:
+		ids := make([]ent.Value, 0, len(m.queue))
+		for id := range m.queue {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *QueueMessageMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedqueue != nil {
+		edges = append(edges, queuemessage.EdgeQueue)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *QueueMessageMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case queuemessage.EdgeQueue:
+		ids := make([]ent.Value, 0, len(m.removedqueue))
+		for id := range m.removedqueue {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *QueueMessageMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedqueue {
+		edges = append(edges, queuemessage.EdgeQueue)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *QueueMessageMutation) EdgeCleared(name string) bool {
+	switch name {
+	case queuemessage.EdgeQueue:
+		return m.clearedqueue
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *QueueMessageMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown QueueMessage unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *QueueMessageMutation) ResetEdge(name string) error {
+	switch name {
+	case queuemessage.EdgeQueue:
+		m.ResetQueue()
+		return nil
+	}
+	return fmt.Errorf("unknown QueueMessage edge %s", name)
 }
 
 // UserMutation represents an operation that mutates the User nodes in the graph.

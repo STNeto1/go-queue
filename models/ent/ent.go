@@ -4,6 +4,7 @@ package ent
 
 import (
 	"_models/ent/queue"
+	"_models/ent/queuemessage"
 	"_models/ent/user"
 	"context"
 	"errors"
@@ -32,8 +33,9 @@ type OrderFunc func(*sql.Selector)
 // columnChecker returns a function indicates if the column exists in the given column.
 func columnChecker(table string) func(string) error {
 	checks := map[string]func(string) bool{
-		queue.Table: queue.ValidColumn,
-		user.Table:  user.ValidColumn,
+		queue.Table:        queue.ValidColumn,
+		queuemessage.Table: queuemessage.ValidColumn,
+		user.Table:         user.ValidColumn,
 	}
 	check, ok := checks[table]
 	if !ok {

@@ -5,6 +5,7 @@ package ent
 import (
 	"_models/ent/predicate"
 	"_models/ent/queue"
+	"_models/ent/queuemessage"
 	"_models/ent/user"
 	"context"
 	"database/sql/driver"
@@ -20,13 +21,14 @@ import (
 // QueueQuery is the builder for querying Queue entities.
 type QueueQuery struct {
 	config
-	limit      *int
-	offset     *int
-	unique     *bool
-	order      []OrderFunc
-	fields     []string
-	predicates []predicate.Queue
-	withUser   *UserQuery
+	limit        *int
+	offset       *int
+	unique       *bool
+	order        []OrderFunc
+	fields       []string
+	predicates   []predicate.Queue
+	withUser     *UserQuery
+	withMessages *QueueMessageQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -78,6 +80,28 @@ func (qq *QueueQuery) QueryUser() *UserQuery {
 			sqlgraph.From(queue.Table, queue.FieldID, selector),
 			sqlgraph.To(user.Table, user.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, true, queue.UserTable, queue.UserPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(qq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryMessages chains the current query on the "messages" edge.
+func (qq *QueueQuery) QueryMessages() *QueueMessageQuery {
+	query := &QueueMessageQuery{config: qq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := qq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := qq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(queue.Table, queue.FieldID, selector),
+			sqlgraph.To(queuemessage.Table, queuemessage.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, queue.MessagesTable, queue.MessagesPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(qq.driver.Dialect(), step)
 		return fromU, nil
@@ -261,12 +285,13 @@ func (qq *QueueQuery) Clone() *QueueQuery {
 		return nil
 	}
 	return &QueueQuery{
-		config:     qq.config,
-		limit:      qq.limit,
-		offset:     qq.offset,
-		order:      append([]OrderFunc{}, qq.order...),
-		predicates: append([]predicate.Queue{}, qq.predicates...),
-		withUser:   qq.withUser.Clone(),
+		config:       qq.config,
+		limit:        qq.limit,
+		offset:       qq.offset,
+		order:        append([]OrderFunc{}, qq.order...),
+		predicates:   append([]predicate.Queue{}, qq.predicates...),
+		withUser:     qq.withUser.Clone(),
+		withMessages: qq.withMessages.Clone(),
 		// clone intermediate query.
 		sql:    qq.sql.Clone(),
 		path:   qq.path,
@@ -282,6 +307,17 @@ func (qq *QueueQuery) WithUser(opts ...func(*UserQuery)) *QueueQuery {
 		opt(query)
 	}
 	qq.withUser = query
+	return qq
+}
+
+// WithMessages tells the query-builder to eager-load the nodes that are connected to
+// the "messages" edge. The optional arguments are used to configure the query builder of the edge.
+func (qq *QueueQuery) WithMessages(opts ...func(*QueueMessageQuery)) *QueueQuery {
+	query := &QueueMessageQuery{config: qq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	qq.withMessages = query
 	return qq
 }
 
@@ -358,8 +394,9 @@ func (qq *QueueQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Queue,
 	var (
 		nodes       = []*Queue{}
 		_spec       = qq.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			qq.withUser != nil,
+			qq.withMessages != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -384,6 +421,13 @@ func (qq *QueueQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Queue,
 		if err := qq.loadUser(ctx, query, nodes,
 			func(n *Queue) { n.Edges.User = []*User{} },
 			func(n *Queue, e *User) { n.Edges.User = append(n.Edges.User, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := qq.withMessages; query != nil {
+		if err := qq.loadMessages(ctx, query, nodes,
+			func(n *Queue) { n.Edges.Messages = []*QueueMessage{} },
+			func(n *Queue, e *QueueMessage) { n.Edges.Messages = append(n.Edges.Messages, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -441,6 +485,64 @@ func (qq *QueueQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*Q
 		nodes, ok := nids[n.ID]
 		if !ok {
 			return fmt.Errorf(`unexpected "user" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
+	}
+	return nil
+}
+func (qq *QueueQuery) loadMessages(ctx context.Context, query *QueueMessageQuery, nodes []*Queue, init func(*Queue), assign func(*Queue, *QueueMessage)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[uuid.UUID]*Queue)
+	nids := make(map[uuid.UUID]map[*Queue]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(queue.MessagesTable)
+		s.Join(joinT).On(s.C(queuemessage.FieldID), joinT.C(queue.MessagesPrimaryKey[1]))
+		s.Where(sql.InValues(joinT.C(queue.MessagesPrimaryKey[0]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(queue.MessagesPrimaryKey[0]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	neighbors, err := query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+		assign := spec.Assign
+		values := spec.ScanValues
+		spec.ScanValues = func(columns []string) ([]any, error) {
+			values, err := values(columns[1:])
+			if err != nil {
+				return nil, err
+			}
+			return append([]any{new(uuid.UUID)}, values...), nil
+		}
+		spec.Assign = func(columns []string, values []any) error {
+			outValue := *values[0].(*uuid.UUID)
+			inValue := *values[1].(*uuid.UUID)
+			if nids[inValue] == nil {
+				nids[inValue] = map[*Queue]struct{}{byID[outValue]: {}}
+				return assign(columns[1:], values[1:])
+			}
+			nids[inValue][byID[outValue]] = struct{}{}
+			return nil
+		}
+	})
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "messages" node returned %v`, n.ID)
 		}
 		for kn := range nodes {
 			assign(kn, n)

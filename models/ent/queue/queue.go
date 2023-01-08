@@ -21,6 +21,8 @@ const (
 	FieldCreatedAt = "created_at"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
+	// EdgeMessages holds the string denoting the messages edge name in mutations.
+	EdgeMessages = "messages"
 	// Table holds the table name of the queue in the database.
 	Table = "queues"
 	// UserTable is the table that holds the user relation/edge. The primary key declared below.
@@ -28,6 +30,11 @@ const (
 	// UserInverseTable is the table name for the User entity.
 	// It exists in this package in order to avoid circular dependency with the "user" package.
 	UserInverseTable = "users"
+	// MessagesTable is the table that holds the messages relation/edge. The primary key declared below.
+	MessagesTable = "queue_messages"
+	// MessagesInverseTable is the table name for the QueueMessage entity.
+	// It exists in this package in order to avoid circular dependency with the "queuemessage" package.
+	MessagesInverseTable = "queue_messages"
 )
 
 // Columns holds all SQL columns for queue fields.
@@ -42,6 +49,9 @@ var (
 	// UserPrimaryKey and UserColumn2 are the table columns denoting the
 	// primary key for the user relation (M2M).
 	UserPrimaryKey = []string{"user_id", "queue_id"}
+	// MessagesPrimaryKey and MessagesColumn2 are the table columns denoting the
+	// primary key for the messages relation (M2M).
+	MessagesPrimaryKey = []string{"queue_id", "queue_message_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).

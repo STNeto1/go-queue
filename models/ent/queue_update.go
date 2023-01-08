@@ -5,6 +5,7 @@ package ent
 import (
 	"_models/ent/predicate"
 	"_models/ent/queue"
+	"_models/ent/queuemessage"
 	"_models/ent/user"
 	"context"
 	"errors"
@@ -65,6 +66,21 @@ func (qu *QueueUpdate) AddUser(u ...*User) *QueueUpdate {
 	return qu.AddUserIDs(ids...)
 }
 
+// AddMessageIDs adds the "messages" edge to the QueueMessage entity by IDs.
+func (qu *QueueUpdate) AddMessageIDs(ids ...uuid.UUID) *QueueUpdate {
+	qu.mutation.AddMessageIDs(ids...)
+	return qu
+}
+
+// AddMessages adds the "messages" edges to the QueueMessage entity.
+func (qu *QueueUpdate) AddMessages(q ...*QueueMessage) *QueueUpdate {
+	ids := make([]uuid.UUID, len(q))
+	for i := range q {
+		ids[i] = q[i].ID
+	}
+	return qu.AddMessageIDs(ids...)
+}
+
 // Mutation returns the QueueMutation object of the builder.
 func (qu *QueueUpdate) Mutation() *QueueMutation {
 	return qu.mutation
@@ -89,6 +105,27 @@ func (qu *QueueUpdate) RemoveUser(u ...*User) *QueueUpdate {
 		ids[i] = u[i].ID
 	}
 	return qu.RemoveUserIDs(ids...)
+}
+
+// ClearMessages clears all "messages" edges to the QueueMessage entity.
+func (qu *QueueUpdate) ClearMessages() *QueueUpdate {
+	qu.mutation.ClearMessages()
+	return qu
+}
+
+// RemoveMessageIDs removes the "messages" edge to QueueMessage entities by IDs.
+func (qu *QueueUpdate) RemoveMessageIDs(ids ...uuid.UUID) *QueueUpdate {
+	qu.mutation.RemoveMessageIDs(ids...)
+	return qu
+}
+
+// RemoveMessages removes "messages" edges to QueueMessage entities.
+func (qu *QueueUpdate) RemoveMessages(q ...*QueueMessage) *QueueUpdate {
+	ids := make([]uuid.UUID, len(q))
+	for i := range q {
+		ids[i] = q[i].ID
+	}
+	return qu.RemoveMessageIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -223,6 +260,60 @@ func (qu *QueueUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if qu.mutation.MessagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   queue.MessagesTable,
+			Columns: queue.MessagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: queuemessage.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := qu.mutation.RemovedMessagesIDs(); len(nodes) > 0 && !qu.mutation.MessagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   queue.MessagesTable,
+			Columns: queue.MessagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: queuemessage.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := qu.mutation.MessagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   queue.MessagesTable,
+			Columns: queue.MessagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: queuemessage.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, qu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{queue.Label}
@@ -277,6 +368,21 @@ func (quo *QueueUpdateOne) AddUser(u ...*User) *QueueUpdateOne {
 	return quo.AddUserIDs(ids...)
 }
 
+// AddMessageIDs adds the "messages" edge to the QueueMessage entity by IDs.
+func (quo *QueueUpdateOne) AddMessageIDs(ids ...uuid.UUID) *QueueUpdateOne {
+	quo.mutation.AddMessageIDs(ids...)
+	return quo
+}
+
+// AddMessages adds the "messages" edges to the QueueMessage entity.
+func (quo *QueueUpdateOne) AddMessages(q ...*QueueMessage) *QueueUpdateOne {
+	ids := make([]uuid.UUID, len(q))
+	for i := range q {
+		ids[i] = q[i].ID
+	}
+	return quo.AddMessageIDs(ids...)
+}
+
 // Mutation returns the QueueMutation object of the builder.
 func (quo *QueueUpdateOne) Mutation() *QueueMutation {
 	return quo.mutation
@@ -301,6 +407,27 @@ func (quo *QueueUpdateOne) RemoveUser(u ...*User) *QueueUpdateOne {
 		ids[i] = u[i].ID
 	}
 	return quo.RemoveUserIDs(ids...)
+}
+
+// ClearMessages clears all "messages" edges to the QueueMessage entity.
+func (quo *QueueUpdateOne) ClearMessages() *QueueUpdateOne {
+	quo.mutation.ClearMessages()
+	return quo
+}
+
+// RemoveMessageIDs removes the "messages" edge to QueueMessage entities by IDs.
+func (quo *QueueUpdateOne) RemoveMessageIDs(ids ...uuid.UUID) *QueueUpdateOne {
+	quo.mutation.RemoveMessageIDs(ids...)
+	return quo
+}
+
+// RemoveMessages removes "messages" edges to QueueMessage entities.
+func (quo *QueueUpdateOne) RemoveMessages(q ...*QueueMessage) *QueueUpdateOne {
+	ids := make([]uuid.UUID, len(q))
+	for i := range q {
+		ids[i] = q[i].ID
+	}
+	return quo.RemoveMessageIDs(ids...)
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -457,6 +584,60 @@ func (quo *QueueUpdateOne) sqlSave(ctx context.Context) (_node *Queue, err error
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeUUID,
 					Column: user.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if quo.mutation.MessagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   queue.MessagesTable,
+			Columns: queue.MessagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: queuemessage.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := quo.mutation.RemovedMessagesIDs(); len(nodes) > 0 && !quo.mutation.MessagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   queue.MessagesTable,
+			Columns: queue.MessagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: queuemessage.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := quo.mutation.MessagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   queue.MessagesTable,
+			Columns: queue.MessagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: queuemessage.FieldID,
 				},
 			},
 		}

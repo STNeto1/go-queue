@@ -21,6 +21,22 @@ var (
 		Columns:    QueuesColumns,
 		PrimaryKey: []*schema.Column{QueuesColumns[0]},
 	}
+	// QueueMessagesColumns holds the columns for the "queue_messages" table.
+	QueueMessagesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "body", Type: field.TypeString, Size: 2147483647},
+		{Name: "content_type", Type: field.TypeString},
+		{Name: "status", Type: field.TypeString, Default: "pending"},
+		{Name: "max_retries", Type: field.TypeUint, Default: 5},
+		{Name: "available_from", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// QueueMessagesTable holds the schema information for the "queue_messages" table.
+	QueueMessagesTable = &schema.Table{
+		Name:       "queue_messages",
+		Columns:    QueueMessagesColumns,
+		PrimaryKey: []*schema.Column{QueueMessagesColumns[0]},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -34,6 +50,31 @@ var (
 		Name:       "users",
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
+	}
+	// QueueMessagesColumns holds the columns for the "queue_messages" table.
+	QueueMessagesColumns = []*schema.Column{
+		{Name: "queue_id", Type: field.TypeUUID},
+		{Name: "queue_message_id", Type: field.TypeUUID},
+	}
+	// QueueMessagesTable holds the schema information for the "queue_messages" table.
+	QueueMessagesTable = &schema.Table{
+		Name:       "queue_messages",
+		Columns:    QueueMessagesColumns,
+		PrimaryKey: []*schema.Column{QueueMessagesColumns[0], QueueMessagesColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "queue_messages_queue_id",
+				Columns:    []*schema.Column{QueueMessagesColumns[0]},
+				RefColumns: []*schema.Column{QueuesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "queue_messages_queue_message_id",
+				Columns:    []*schema.Column{QueueMessagesColumns[1]},
+				RefColumns: []*schema.Column{QueueMessagesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
 	}
 	// UserQueuesColumns holds the columns for the "user_queues" table.
 	UserQueuesColumns = []*schema.Column{
@@ -63,12 +104,16 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		QueuesTable,
+		QueueMessagesTable,
 		UsersTable,
+		QueueMessagesTable,
 		UserQueuesTable,
 	}
 )
 
 func init() {
+	QueueMessagesTable.ForeignKeys[0].RefTable = QueuesTable
+	QueueMessagesTable.ForeignKeys[1].RefTable = QueueMessagesTable
 	UserQueuesTable.ForeignKeys[0].RefTable = UsersTable
 	UserQueuesTable.ForeignKeys[1].RefTable = QueuesTable
 }

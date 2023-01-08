@@ -4,6 +4,7 @@ package ent
 
 import (
 	"_models/ent/queue"
+	"_models/ent/queuemessage"
 	"_models/ent/schema"
 	"_models/ent/user"
 	"time"
@@ -29,6 +30,28 @@ func init() {
 	queueDescID := queueFields[0].Descriptor()
 	// queue.DefaultID holds the default value on creation for the id field.
 	queue.DefaultID = queueDescID.Default.(func() uuid.UUID)
+	queuemessageFields := schema.QueueMessage{}.Fields()
+	_ = queuemessageFields
+	// queuemessageDescStatus is the schema descriptor for status field.
+	queuemessageDescStatus := queuemessageFields[3].Descriptor()
+	// queuemessage.DefaultStatus holds the default value on creation for the status field.
+	queuemessage.DefaultStatus = queuemessageDescStatus.Default.(string)
+	// queuemessageDescMaxRetries is the schema descriptor for max_retries field.
+	queuemessageDescMaxRetries := queuemessageFields[4].Descriptor()
+	// queuemessage.DefaultMaxRetries holds the default value on creation for the max_retries field.
+	queuemessage.DefaultMaxRetries = queuemessageDescMaxRetries.Default.(uint)
+	// queuemessageDescAvailableFrom is the schema descriptor for available_from field.
+	queuemessageDescAvailableFrom := queuemessageFields[5].Descriptor()
+	// queuemessage.DefaultAvailableFrom holds the default value on creation for the available_from field.
+	queuemessage.DefaultAvailableFrom = queuemessageDescAvailableFrom.Default.(func() time.Time)
+	// queuemessageDescCreatedAt is the schema descriptor for created_at field.
+	queuemessageDescCreatedAt := queuemessageFields[6].Descriptor()
+	// queuemessage.DefaultCreatedAt holds the default value on creation for the created_at field.
+	queuemessage.DefaultCreatedAt = queuemessageDescCreatedAt.Default.(func() time.Time)
+	// queuemessageDescID is the schema descriptor for id field.
+	queuemessageDescID := queuemessageFields[0].Descriptor()
+	// queuemessage.DefaultID holds the default value on creation for the id field.
+	queuemessage.DefaultID = queuemessageDescID.Default.(func() uuid.UUID)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescCreatedAt is the schema descriptor for created_at field.

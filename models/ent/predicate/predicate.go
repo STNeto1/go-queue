@@ -9,5 +9,8 @@ import (
 // Queue is the predicate function for queue builders.
 type Queue func(*sql.Selector)
 
+// QueueMessage is the predicate function for queuemessage builders.
+type QueueMessage func(*sql.Selector)
+
 // User is the predicate function for user builders.
 type User func(*sql.Selector)

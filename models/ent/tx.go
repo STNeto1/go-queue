@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// Queue is the client for interacting with the Queue builders.
 	Queue *QueueClient
+	// QueueMessage is the client for interacting with the QueueMessage builders.
+	QueueMessage *QueueMessageClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 
@@ -148,6 +150,7 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Queue = NewQueueClient(tx.config)
+	tx.QueueMessage = NewQueueMessageClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
 
