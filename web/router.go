@@ -1,18 +1,29 @@
 package web
 
-import "github.com/gin-gonic/gin"
+import (
+	"_core/auth"
+	ar "_web/auth"
+
+	"github.com/gin-gonic/gin"
+)
 
 type Router struct {
-	engine *gin.Engine
+	Engine *gin.Engine
+
+	AS *auth.AuthService
 }
 
-func NewRouter() *Router {
+func NewRouter(AS *auth.AuthService) *Router {
 	r := gin.Default()
 
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
+	ar.SetupAuthRoutes(AS, r)
+
 	return &Router{
-		engine: r,
+		Engine: r,
+		AS:     AS,
 	}
+
 }
