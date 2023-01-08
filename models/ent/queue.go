@@ -4,6 +4,7 @@ package ent
 
 import (
 	"_models/ent/queue"
+	"_models/ent/user"
 	"fmt"
 	"strings"
 	"time"
@@ -25,13 +26,14 @@ type Queue struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the QueueQuery when eager-loading is set.
-	Edges QueueEdges `json:"edges"`
+	Edges       QueueEdges `json:"edges"`
+	user_queues *uuid.UUID
 }
 
 // QueueEdges holds the relations/edges for other nodes in the graph.
 type QueueEdges struct {
 	// User holds the value of the user edge.
-	User []*User `json:"user,omitempty"`
+	User *User `json:"user,omitempty"`
 	// Messages holds the value of the messages edge.
 	Messages []*Message `json:"messages,omitempty"`
 	// loadedTypes holds the information for reporting if a
@@ -40,9 +42,13 @@ type QueueEdges struct {
 }
 
 // UserOrErr returns the User value or an error if the edge
-// was not loaded in eager-loading.
-func (e QueueEdges) UserOrErr() ([]*User, error) {
+// was not loaded in eager-loading, or loaded but was not found.
+func (e QueueEdges) UserOrErr() (*User, error) {
 	if e.loadedTypes[0] {
+		if e.User == nil {
+			// Edge was loaded but was not found.
+			return nil, &NotFoundError{label: user.Label}
+		}
 		return e.User, nil
 	}
 	return nil, &NotLoadedError{edge: "user"}
@@ -68,6 +74,8 @@ func (*Queue) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullTime)
 		case queue.FieldID, queue.FieldRef:
 			values[i] = new(uuid.UUID)
+		case queue.ForeignKeys[0]: // user_queues
+			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Queue", columns[i])
 		}
@@ -106,6 +114,13 @@ func (q *Queue) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
 				q.CreatedAt = value.Time
+			}
+		case queue.ForeignKeys[0]:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field user_queues", values[i])
+			} else if value.Valid {
+				q.user_queues = new(uuid.UUID)
+				*q.user_queues = *value.S.(*uuid.UUID)
 			}
 		}
 	}

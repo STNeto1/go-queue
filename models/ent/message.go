@@ -4,6 +4,7 @@ package ent
 
 import (
 	"_models/ent/message"
+	"_models/ent/queue"
 	"fmt"
 	"strings"
 	"time"
@@ -23,6 +24,8 @@ type Message struct {
 	ContentType string `json:"content_type,omitempty"`
 	// Status holds the value of the "status" field.
 	Status string `json:"status,omitempty"`
+	// Retries holds the value of the "retries" field.
+	Retries uint `json:"retries,omitempty"`
 	// MaxRetries holds the value of the "max_retries" field.
 	MaxRetries uint `json:"max_retries,omitempty"`
 	// AvailableFrom holds the value of the "available_from" field.
@@ -31,22 +34,27 @@ type Message struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the MessageQuery when eager-loading is set.
-	Edges MessageEdges `json:"edges"`
+	Edges          MessageEdges `json:"edges"`
+	queue_messages *uuid.UUID
 }
 
 // MessageEdges holds the relations/edges for other nodes in the graph.
 type MessageEdges struct {
 	// Queue holds the value of the queue edge.
-	Queue []*Queue `json:"queue,omitempty"`
+	Queue *Queue `json:"queue,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
 }
 
 // QueueOrErr returns the Queue value or an error if the edge
-// was not loaded in eager-loading.
-func (e MessageEdges) QueueOrErr() ([]*Queue, error) {
+// was not loaded in eager-loading, or loaded but was not found.
+func (e MessageEdges) QueueOrErr() (*Queue, error) {
 	if e.loadedTypes[0] {
+		if e.Queue == nil {
+			// Edge was loaded but was not found.
+			return nil, &NotFoundError{label: queue.Label}
+		}
 		return e.Queue, nil
 	}
 	return nil, &NotLoadedError{edge: "queue"}
@@ -57,7 +65,7 @@ func (*Message) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case message.FieldMaxRetries:
+		case message.FieldRetries, message.FieldMaxRetries:
 			values[i] = new(sql.NullInt64)
 		case message.FieldBody, message.FieldContentType, message.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -65,6 +73,8 @@ func (*Message) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullTime)
 		case message.FieldID:
 			values[i] = new(uuid.UUID)
+		case message.ForeignKeys[0]: // queue_messages
+			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Message", columns[i])
 		}
@@ -104,6 +114,12 @@ func (m *Message) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				m.Status = value.String
 			}
+		case message.FieldRetries:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field retries", values[i])
+			} else if value.Valid {
+				m.Retries = uint(value.Int64)
+			}
 		case message.FieldMaxRetries:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field max_retries", values[i])
@@ -121,6 +137,13 @@ func (m *Message) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
 				m.CreatedAt = value.Time
+			}
+		case message.ForeignKeys[0]:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field queue_messages", values[i])
+			} else if value.Valid {
+				m.queue_messages = new(uuid.UUID)
+				*m.queue_messages = *value.S.(*uuid.UUID)
 			}
 		}
 	}
@@ -163,6 +186,9 @@ func (m *Message) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(m.Status)
+	builder.WriteString(", ")
+	builder.WriteString("retries=")
+	builder.WriteString(fmt.Sprintf("%v", m.Retries))
 	builder.WriteString(", ")
 	builder.WriteString("max_retries=")
 	builder.WriteString(fmt.Sprintf("%v", m.MaxRetries))

@@ -56,6 +56,27 @@ func (mu *MessageUpdate) SetNillableStatus(s *string) *MessageUpdate {
 	return mu
 }
 
+// SetRetries sets the "retries" field.
+func (mu *MessageUpdate) SetRetries(u uint) *MessageUpdate {
+	mu.mutation.ResetRetries()
+	mu.mutation.SetRetries(u)
+	return mu
+}
+
+// SetNillableRetries sets the "retries" field if the given value is not nil.
+func (mu *MessageUpdate) SetNillableRetries(u *uint) *MessageUpdate {
+	if u != nil {
+		mu.SetRetries(*u)
+	}
+	return mu
+}
+
+// AddRetries adds u to the "retries" field.
+func (mu *MessageUpdate) AddRetries(u int) *MessageUpdate {
+	mu.mutation.AddRetries(u)
+	return mu
+}
+
 // SetMaxRetries sets the "max_retries" field.
 func (mu *MessageUpdate) SetMaxRetries(u uint) *MessageUpdate {
 	mu.mutation.ResetMaxRetries()
@@ -105,19 +126,23 @@ func (mu *MessageUpdate) SetNillableCreatedAt(t *time.Time) *MessageUpdate {
 	return mu
 }
 
-// AddQueueIDs adds the "queue" edge to the Queue entity by IDs.
-func (mu *MessageUpdate) AddQueueIDs(ids ...uuid.UUID) *MessageUpdate {
-	mu.mutation.AddQueueIDs(ids...)
+// SetQueueID sets the "queue" edge to the Queue entity by ID.
+func (mu *MessageUpdate) SetQueueID(id uuid.UUID) *MessageUpdate {
+	mu.mutation.SetQueueID(id)
 	return mu
 }
 
-// AddQueue adds the "queue" edges to the Queue entity.
-func (mu *MessageUpdate) AddQueue(q ...*Queue) *MessageUpdate {
-	ids := make([]uuid.UUID, len(q))
-	for i := range q {
-		ids[i] = q[i].ID
+// SetNillableQueueID sets the "queue" edge to the Queue entity by ID if the given value is not nil.
+func (mu *MessageUpdate) SetNillableQueueID(id *uuid.UUID) *MessageUpdate {
+	if id != nil {
+		mu = mu.SetQueueID(*id)
 	}
-	return mu.AddQueueIDs(ids...)
+	return mu
+}
+
+// SetQueue sets the "queue" edge to the Queue entity.
+func (mu *MessageUpdate) SetQueue(q *Queue) *MessageUpdate {
+	return mu.SetQueueID(q.ID)
 }
 
 // Mutation returns the MessageMutation object of the builder.
@@ -125,25 +150,10 @@ func (mu *MessageUpdate) Mutation() *MessageMutation {
 	return mu.mutation
 }
 
-// ClearQueue clears all "queue" edges to the Queue entity.
+// ClearQueue clears the "queue" edge to the Queue entity.
 func (mu *MessageUpdate) ClearQueue() *MessageUpdate {
 	mu.mutation.ClearQueue()
 	return mu
-}
-
-// RemoveQueueIDs removes the "queue" edge to Queue entities by IDs.
-func (mu *MessageUpdate) RemoveQueueIDs(ids ...uuid.UUID) *MessageUpdate {
-	mu.mutation.RemoveQueueIDs(ids...)
-	return mu
-}
-
-// RemoveQueue removes "queue" edges to Queue entities.
-func (mu *MessageUpdate) RemoveQueue(q ...*Queue) *MessageUpdate {
-	ids := make([]uuid.UUID, len(q))
-	for i := range q {
-		ids[i] = q[i].ID
-	}
-	return mu.RemoveQueueIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -227,6 +237,12 @@ func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := mu.mutation.Status(); ok {
 		_spec.SetField(message.FieldStatus, field.TypeString, value)
 	}
+	if value, ok := mu.mutation.Retries(); ok {
+		_spec.SetField(message.FieldRetries, field.TypeUint, value)
+	}
+	if value, ok := mu.mutation.AddedRetries(); ok {
+		_spec.AddField(message.FieldRetries, field.TypeUint, value)
+	}
 	if value, ok := mu.mutation.MaxRetries(); ok {
 		_spec.SetField(message.FieldMaxRetries, field.TypeUint, value)
 	}
@@ -241,10 +257,10 @@ func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if mu.mutation.QueueCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.M2O,
 			Inverse: true,
 			Table:   message.QueueTable,
-			Columns: message.QueuePrimaryKey,
+			Columns: []string{message.QueueColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
@@ -252,34 +268,15 @@ func (mu *MessageUpdate) sqlSave(ctx context.Context) (n int, err error) {
 					Column: queue.FieldID,
 				},
 			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := mu.mutation.RemovedQueueIDs(); len(nodes) > 0 && !mu.mutation.QueueCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   message.QueueTable,
-			Columns: message.QueuePrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeUUID,
-					Column: queue.FieldID,
-				},
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := mu.mutation.QueueIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.M2O,
 			Inverse: true,
 			Table:   message.QueueTable,
-			Columns: message.QueuePrimaryKey,
+			Columns: []string{message.QueueColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
@@ -338,6 +335,27 @@ func (muo *MessageUpdateOne) SetNillableStatus(s *string) *MessageUpdateOne {
 	return muo
 }
 
+// SetRetries sets the "retries" field.
+func (muo *MessageUpdateOne) SetRetries(u uint) *MessageUpdateOne {
+	muo.mutation.ResetRetries()
+	muo.mutation.SetRetries(u)
+	return muo
+}
+
+// SetNillableRetries sets the "retries" field if the given value is not nil.
+func (muo *MessageUpdateOne) SetNillableRetries(u *uint) *MessageUpdateOne {
+	if u != nil {
+		muo.SetRetries(*u)
+	}
+	return muo
+}
+
+// AddRetries adds u to the "retries" field.
+func (muo *MessageUpdateOne) AddRetries(u int) *MessageUpdateOne {
+	muo.mutation.AddRetries(u)
+	return muo
+}
+
 // SetMaxRetries sets the "max_retries" field.
 func (muo *MessageUpdateOne) SetMaxRetries(u uint) *MessageUpdateOne {
 	muo.mutation.ResetMaxRetries()
@@ -387,19 +405,23 @@ func (muo *MessageUpdateOne) SetNillableCreatedAt(t *time.Time) *MessageUpdateOn
 	return muo
 }
 
-// AddQueueIDs adds the "queue" edge to the Queue entity by IDs.
-func (muo *MessageUpdateOne) AddQueueIDs(ids ...uuid.UUID) *MessageUpdateOne {
-	muo.mutation.AddQueueIDs(ids...)
+// SetQueueID sets the "queue" edge to the Queue entity by ID.
+func (muo *MessageUpdateOne) SetQueueID(id uuid.UUID) *MessageUpdateOne {
+	muo.mutation.SetQueueID(id)
 	return muo
 }
 
-// AddQueue adds the "queue" edges to the Queue entity.
-func (muo *MessageUpdateOne) AddQueue(q ...*Queue) *MessageUpdateOne {
-	ids := make([]uuid.UUID, len(q))
-	for i := range q {
-		ids[i] = q[i].ID
+// SetNillableQueueID sets the "queue" edge to the Queue entity by ID if the given value is not nil.
+func (muo *MessageUpdateOne) SetNillableQueueID(id *uuid.UUID) *MessageUpdateOne {
+	if id != nil {
+		muo = muo.SetQueueID(*id)
 	}
-	return muo.AddQueueIDs(ids...)
+	return muo
+}
+
+// SetQueue sets the "queue" edge to the Queue entity.
+func (muo *MessageUpdateOne) SetQueue(q *Queue) *MessageUpdateOne {
+	return muo.SetQueueID(q.ID)
 }
 
 // Mutation returns the MessageMutation object of the builder.
@@ -407,25 +429,10 @@ func (muo *MessageUpdateOne) Mutation() *MessageMutation {
 	return muo.mutation
 }
 
-// ClearQueue clears all "queue" edges to the Queue entity.
+// ClearQueue clears the "queue" edge to the Queue entity.
 func (muo *MessageUpdateOne) ClearQueue() *MessageUpdateOne {
 	muo.mutation.ClearQueue()
 	return muo
-}
-
-// RemoveQueueIDs removes the "queue" edge to Queue entities by IDs.
-func (muo *MessageUpdateOne) RemoveQueueIDs(ids ...uuid.UUID) *MessageUpdateOne {
-	muo.mutation.RemoveQueueIDs(ids...)
-	return muo
-}
-
-// RemoveQueue removes "queue" edges to Queue entities.
-func (muo *MessageUpdateOne) RemoveQueue(q ...*Queue) *MessageUpdateOne {
-	ids := make([]uuid.UUID, len(q))
-	for i := range q {
-		ids[i] = q[i].ID
-	}
-	return muo.RemoveQueueIDs(ids...)
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -539,6 +546,12 @@ func (muo *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err e
 	if value, ok := muo.mutation.Status(); ok {
 		_spec.SetField(message.FieldStatus, field.TypeString, value)
 	}
+	if value, ok := muo.mutation.Retries(); ok {
+		_spec.SetField(message.FieldRetries, field.TypeUint, value)
+	}
+	if value, ok := muo.mutation.AddedRetries(); ok {
+		_spec.AddField(message.FieldRetries, field.TypeUint, value)
+	}
 	if value, ok := muo.mutation.MaxRetries(); ok {
 		_spec.SetField(message.FieldMaxRetries, field.TypeUint, value)
 	}
@@ -553,10 +566,10 @@ func (muo *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err e
 	}
 	if muo.mutation.QueueCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.M2O,
 			Inverse: true,
 			Table:   message.QueueTable,
-			Columns: message.QueuePrimaryKey,
+			Columns: []string{message.QueueColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
@@ -564,34 +577,15 @@ func (muo *MessageUpdateOne) sqlSave(ctx context.Context) (_node *Message, err e
 					Column: queue.FieldID,
 				},
 			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := muo.mutation.RemovedQueueIDs(); len(nodes) > 0 && !muo.mutation.QueueCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   message.QueueTable,
-			Columns: message.QueuePrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeUUID,
-					Column: queue.FieldID,
-				},
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := muo.mutation.QueueIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.M2O,
 			Inverse: true,
 			Table:   message.QueueTable,
-			Columns: message.QueuePrimaryKey,
+			Columns: []string{message.QueueColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{

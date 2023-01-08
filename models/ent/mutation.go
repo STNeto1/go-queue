@@ -41,13 +41,14 @@ type MessageMutation struct {
 	body           *string
 	content_type   *string
 	status         *string
+	retries        *uint
+	addretries     *int
 	max_retries    *uint
 	addmax_retries *int
 	available_from *time.Time
 	created_at     *time.Time
 	clearedFields  map[string]struct{}
-	queue          map[uuid.UUID]struct{}
-	removedqueue   map[uuid.UUID]struct{}
+	queue          *uuid.UUID
 	clearedqueue   bool
 	done           bool
 	oldValue       func(context.Context) (*Message, error)
@@ -266,6 +267,62 @@ func (m *MessageMutation) ResetStatus() {
 	m.status = nil
 }
 
+// SetRetries sets the "retries" field.
+func (m *MessageMutation) SetRetries(u uint) {
+	m.retries = &u
+	m.addretries = nil
+}
+
+// Retries returns the value of the "retries" field in the mutation.
+func (m *MessageMutation) Retries() (r uint, exists bool) {
+	v := m.retries
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRetries returns the old "retries" field's value of the Message entity.
+// If the Message object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageMutation) OldRetries(ctx context.Context) (v uint, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRetries is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRetries requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRetries: %w", err)
+	}
+	return oldValue.Retries, nil
+}
+
+// AddRetries adds u to the "retries" field.
+func (m *MessageMutation) AddRetries(u int) {
+	if m.addretries != nil {
+		*m.addretries += u
+	} else {
+		m.addretries = &u
+	}
+}
+
+// AddedRetries returns the value that was added to the "retries" field in this mutation.
+func (m *MessageMutation) AddedRetries() (r int, exists bool) {
+	v := m.addretries
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRetries resets all changes to the "retries" field.
+func (m *MessageMutation) ResetRetries() {
+	m.retries = nil
+	m.addretries = nil
+}
+
 // SetMaxRetries sets the "max_retries" field.
 func (m *MessageMutation) SetMaxRetries(u uint) {
 	m.max_retries = &u
@@ -394,14 +451,9 @@ func (m *MessageMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
-// AddQueueIDs adds the "queue" edge to the Queue entity by ids.
-func (m *MessageMutation) AddQueueIDs(ids ...uuid.UUID) {
-	if m.queue == nil {
-		m.queue = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		m.queue[ids[i]] = struct{}{}
-	}
+// SetQueueID sets the "queue" edge to the Queue entity by id.
+func (m *MessageMutation) SetQueueID(id uuid.UUID) {
+	m.queue = &id
 }
 
 // ClearQueue clears the "queue" edge to the Queue entity.
@@ -414,29 +466,20 @@ func (m *MessageMutation) QueueCleared() bool {
 	return m.clearedqueue
 }
 
-// RemoveQueueIDs removes the "queue" edge to the Queue entity by IDs.
-func (m *MessageMutation) RemoveQueueIDs(ids ...uuid.UUID) {
-	if m.removedqueue == nil {
-		m.removedqueue = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		delete(m.queue, ids[i])
-		m.removedqueue[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedQueue returns the removed IDs of the "queue" edge to the Queue entity.
-func (m *MessageMutation) RemovedQueueIDs() (ids []uuid.UUID) {
-	for id := range m.removedqueue {
-		ids = append(ids, id)
+// QueueID returns the "queue" edge ID in the mutation.
+func (m *MessageMutation) QueueID() (id uuid.UUID, exists bool) {
+	if m.queue != nil {
+		return *m.queue, true
 	}
 	return
 }
 
 // QueueIDs returns the "queue" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// QueueID instead. It exists only for internal usage by the builders.
 func (m *MessageMutation) QueueIDs() (ids []uuid.UUID) {
-	for id := range m.queue {
-		ids = append(ids, id)
+	if id := m.queue; id != nil {
+		ids = append(ids, *id)
 	}
 	return
 }
@@ -445,7 +488,6 @@ func (m *MessageMutation) QueueIDs() (ids []uuid.UUID) {
 func (m *MessageMutation) ResetQueue() {
 	m.queue = nil
 	m.clearedqueue = false
-	m.removedqueue = nil
 }
 
 // Where appends a list predicates to the MessageMutation builder.
@@ -467,7 +509,7 @@ func (m *MessageMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MessageMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 7)
 	if m.body != nil {
 		fields = append(fields, message.FieldBody)
 	}
@@ -476,6 +518,9 @@ func (m *MessageMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, message.FieldStatus)
+	}
+	if m.retries != nil {
+		fields = append(fields, message.FieldRetries)
 	}
 	if m.max_retries != nil {
 		fields = append(fields, message.FieldMaxRetries)
@@ -500,6 +545,8 @@ func (m *MessageMutation) Field(name string) (ent.Value, bool) {
 		return m.ContentType()
 	case message.FieldStatus:
 		return m.Status()
+	case message.FieldRetries:
+		return m.Retries()
 	case message.FieldMaxRetries:
 		return m.MaxRetries()
 	case message.FieldAvailableFrom:
@@ -521,6 +568,8 @@ func (m *MessageMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldContentType(ctx)
 	case message.FieldStatus:
 		return m.OldStatus(ctx)
+	case message.FieldRetries:
+		return m.OldRetries(ctx)
 	case message.FieldMaxRetries:
 		return m.OldMaxRetries(ctx)
 	case message.FieldAvailableFrom:
@@ -557,6 +606,13 @@ func (m *MessageMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetStatus(v)
 		return nil
+	case message.FieldRetries:
+		v, ok := value.(uint)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRetries(v)
+		return nil
 	case message.FieldMaxRetries:
 		v, ok := value.(uint)
 		if !ok {
@@ -586,6 +642,9 @@ func (m *MessageMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *MessageMutation) AddedFields() []string {
 	var fields []string
+	if m.addretries != nil {
+		fields = append(fields, message.FieldRetries)
+	}
 	if m.addmax_retries != nil {
 		fields = append(fields, message.FieldMaxRetries)
 	}
@@ -597,6 +656,8 @@ func (m *MessageMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *MessageMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
+	case message.FieldRetries:
+		return m.AddedRetries()
 	case message.FieldMaxRetries:
 		return m.AddedMaxRetries()
 	}
@@ -608,6 +669,13 @@ func (m *MessageMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *MessageMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case message.FieldRetries:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRetries(v)
+		return nil
 	case message.FieldMaxRetries:
 		v, ok := value.(int)
 		if !ok {
@@ -651,6 +719,9 @@ func (m *MessageMutation) ResetField(name string) error {
 	case message.FieldStatus:
 		m.ResetStatus()
 		return nil
+	case message.FieldRetries:
+		m.ResetRetries()
+		return nil
 	case message.FieldMaxRetries:
 		m.ResetMaxRetries()
 		return nil
@@ -678,11 +749,9 @@ func (m *MessageMutation) AddedEdges() []string {
 func (m *MessageMutation) AddedIDs(name string) []ent.Value {
 	switch name {
 	case message.EdgeQueue:
-		ids := make([]ent.Value, 0, len(m.queue))
-		for id := range m.queue {
-			ids = append(ids, id)
+		if id := m.queue; id != nil {
+			return []ent.Value{*id}
 		}
-		return ids
 	}
 	return nil
 }
@@ -690,23 +759,12 @@ func (m *MessageMutation) AddedIDs(name string) []ent.Value {
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *MessageMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.removedqueue != nil {
-		edges = append(edges, message.EdgeQueue)
-	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *MessageMutation) RemovedIDs(name string) []ent.Value {
-	switch name {
-	case message.EdgeQueue:
-		ids := make([]ent.Value, 0, len(m.removedqueue))
-		for id := range m.removedqueue {
-			ids = append(ids, id)
-		}
-		return ids
-	}
 	return nil
 }
 
@@ -733,6 +791,9 @@ func (m *MessageMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *MessageMutation) ClearEdge(name string) error {
 	switch name {
+	case message.EdgeQueue:
+		m.ClearQueue()
+		return nil
 	}
 	return fmt.Errorf("unknown Message unique edge %s", name)
 }
@@ -758,8 +819,7 @@ type QueueMutation struct {
 	ref             *uuid.UUID
 	created_at      *time.Time
 	clearedFields   map[string]struct{}
-	user            map[uuid.UUID]struct{}
-	removeduser     map[uuid.UUID]struct{}
+	user            *uuid.UUID
 	cleareduser     bool
 	messages        map[uuid.UUID]struct{}
 	removedmessages map[uuid.UUID]struct{}
@@ -981,14 +1041,9 @@ func (m *QueueMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
-// AddUserIDs adds the "user" edge to the User entity by ids.
-func (m *QueueMutation) AddUserIDs(ids ...uuid.UUID) {
-	if m.user == nil {
-		m.user = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		m.user[ids[i]] = struct{}{}
-	}
+// SetUserID sets the "user" edge to the User entity by id.
+func (m *QueueMutation) SetUserID(id uuid.UUID) {
+	m.user = &id
 }
 
 // ClearUser clears the "user" edge to the User entity.
@@ -1001,29 +1056,20 @@ func (m *QueueMutation) UserCleared() bool {
 	return m.cleareduser
 }
 
-// RemoveUserIDs removes the "user" edge to the User entity by IDs.
-func (m *QueueMutation) RemoveUserIDs(ids ...uuid.UUID) {
-	if m.removeduser == nil {
-		m.removeduser = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		delete(m.user, ids[i])
-		m.removeduser[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedUser returns the removed IDs of the "user" edge to the User entity.
-func (m *QueueMutation) RemovedUserIDs() (ids []uuid.UUID) {
-	for id := range m.removeduser {
-		ids = append(ids, id)
+// UserID returns the "user" edge ID in the mutation.
+func (m *QueueMutation) UserID() (id uuid.UUID, exists bool) {
+	if m.user != nil {
+		return *m.user, true
 	}
 	return
 }
 
 // UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
 func (m *QueueMutation) UserIDs() (ids []uuid.UUID) {
-	for id := range m.user {
-		ids = append(ids, id)
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
 	}
 	return
 }
@@ -1032,7 +1078,6 @@ func (m *QueueMutation) UserIDs() (ids []uuid.UUID) {
 func (m *QueueMutation) ResetUser() {
 	m.user = nil
 	m.cleareduser = false
-	m.removeduser = nil
 }
 
 // AddMessageIDs adds the "messages" edge to the Message entity by ids.
@@ -1256,11 +1301,9 @@ func (m *QueueMutation) AddedEdges() []string {
 func (m *QueueMutation) AddedIDs(name string) []ent.Value {
 	switch name {
 	case queue.EdgeUser:
-		ids := make([]ent.Value, 0, len(m.user))
-		for id := range m.user {
-			ids = append(ids, id)
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
 		}
-		return ids
 	case queue.EdgeMessages:
 		ids := make([]ent.Value, 0, len(m.messages))
 		for id := range m.messages {
@@ -1274,9 +1317,6 @@ func (m *QueueMutation) AddedIDs(name string) []ent.Value {
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *QueueMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 2)
-	if m.removeduser != nil {
-		edges = append(edges, queue.EdgeUser)
-	}
 	if m.removedmessages != nil {
 		edges = append(edges, queue.EdgeMessages)
 	}
@@ -1287,12 +1327,6 @@ func (m *QueueMutation) RemovedEdges() []string {
 // the given name in this mutation.
 func (m *QueueMutation) RemovedIDs(name string) []ent.Value {
 	switch name {
-	case queue.EdgeUser:
-		ids := make([]ent.Value, 0, len(m.removeduser))
-		for id := range m.removeduser {
-			ids = append(ids, id)
-		}
-		return ids
 	case queue.EdgeMessages:
 		ids := make([]ent.Value, 0, len(m.removedmessages))
 		for id := range m.removedmessages {
@@ -1331,6 +1365,9 @@ func (m *QueueMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *QueueMutation) ClearEdge(name string) error {
 	switch name {
+	case queue.EdgeUser:
+		m.ClearUser()
+		return nil
 	}
 	return fmt.Errorf("unknown Queue unique edge %s", name)
 }

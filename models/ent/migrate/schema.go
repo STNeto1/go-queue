@@ -14,15 +14,25 @@ var (
 		{Name: "body", Type: field.TypeString, Size: 2147483647},
 		{Name: "content_type", Type: field.TypeString},
 		{Name: "status", Type: field.TypeString, Default: "pending"},
+		{Name: "retries", Type: field.TypeUint, Default: 0},
 		{Name: "max_retries", Type: field.TypeUint, Default: 5},
 		{Name: "available_from", Type: field.TypeTime},
 		{Name: "created_at", Type: field.TypeTime},
+		{Name: "queue_messages", Type: field.TypeUUID, Nullable: true},
 	}
 	// MessagesTable holds the schema information for the "messages" table.
 	MessagesTable = &schema.Table{
 		Name:       "messages",
 		Columns:    MessagesColumns,
 		PrimaryKey: []*schema.Column{MessagesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "messages_queues_messages",
+				Columns:    []*schema.Column{MessagesColumns[8]},
+				RefColumns: []*schema.Column{QueuesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 	}
 	// QueuesColumns holds the columns for the "queues" table.
 	QueuesColumns = []*schema.Column{
@@ -30,12 +40,21 @@ var (
 		{Name: "name", Type: field.TypeString},
 		{Name: "ref", Type: field.TypeUUID},
 		{Name: "created_at", Type: field.TypeTime},
+		{Name: "user_queues", Type: field.TypeUUID, Nullable: true},
 	}
 	// QueuesTable holds the schema information for the "queues" table.
 	QueuesTable = &schema.Table{
 		Name:       "queues",
 		Columns:    QueuesColumns,
 		PrimaryKey: []*schema.Column{QueuesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "queues_users_queues",
+				Columns:    []*schema.Column{QueuesColumns[4]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
@@ -51,69 +70,15 @@ var (
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
-	// QueueMessagesColumns holds the columns for the "queue_messages" table.
-	QueueMessagesColumns = []*schema.Column{
-		{Name: "queue_id", Type: field.TypeUUID},
-		{Name: "message_id", Type: field.TypeUUID},
-	}
-	// QueueMessagesTable holds the schema information for the "queue_messages" table.
-	QueueMessagesTable = &schema.Table{
-		Name:       "queue_messages",
-		Columns:    QueueMessagesColumns,
-		PrimaryKey: []*schema.Column{QueueMessagesColumns[0], QueueMessagesColumns[1]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "queue_messages_queue_id",
-				Columns:    []*schema.Column{QueueMessagesColumns[0]},
-				RefColumns: []*schema.Column{QueuesColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-			{
-				Symbol:     "queue_messages_message_id",
-				Columns:    []*schema.Column{QueueMessagesColumns[1]},
-				RefColumns: []*schema.Column{MessagesColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-		},
-	}
-	// UserQueuesColumns holds the columns for the "user_queues" table.
-	UserQueuesColumns = []*schema.Column{
-		{Name: "user_id", Type: field.TypeUUID},
-		{Name: "queue_id", Type: field.TypeUUID},
-	}
-	// UserQueuesTable holds the schema information for the "user_queues" table.
-	UserQueuesTable = &schema.Table{
-		Name:       "user_queues",
-		Columns:    UserQueuesColumns,
-		PrimaryKey: []*schema.Column{UserQueuesColumns[0], UserQueuesColumns[1]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "user_queues_user_id",
-				Columns:    []*schema.Column{UserQueuesColumns[0]},
-				RefColumns: []*schema.Column{UsersColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-			{
-				Symbol:     "user_queues_queue_id",
-				Columns:    []*schema.Column{UserQueuesColumns[1]},
-				RefColumns: []*schema.Column{QueuesColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-		},
-	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		MessagesTable,
 		QueuesTable,
 		UsersTable,
-		QueueMessagesTable,
-		UserQueuesTable,
 	}
 )
 
 func init() {
-	QueueMessagesTable.ForeignKeys[0].RefTable = QueuesTable
-	QueueMessagesTable.ForeignKeys[1].RefTable = MessagesTable
-	UserQueuesTable.ForeignKeys[0].RefTable = UsersTable
-	UserQueuesTable.ForeignKeys[1].RefTable = QueuesTable
+	MessagesTable.ForeignKeys[0].RefTable = QueuesTable
+	QueuesTable.ForeignKeys[0].RefTable = UsersTable
 }

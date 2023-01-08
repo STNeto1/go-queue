@@ -51,7 +51,7 @@ func (m *MessageService) SendBulkMessages(ctx context.Context, payload *SendBulk
 
 		newMsg, err := tx.Message.
 			Create().
-			AddQueue(q).
+			SetQueue(q).
 			SetBody(msg.Body).
 			SetContentType(msg.ContentType).
 			SetMaxRetries(retries).

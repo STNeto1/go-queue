@@ -14,7 +14,7 @@ type CreateQueuePayload struct {
 }
 
 func (q *QueueService) CreateQueue(ctx context.Context, payload CreateQueuePayload) (*ent.Queue, error) {
-	queue, err := q.client.Queue.Create().SetName(payload.Name).AddUser(payload.User).Save(ctx)
+	queue, err := q.client.Queue.Create().SetName(payload.Name).SetUser(payload.User).Save(ctx)
 	if err != nil {
 		q.logger.Error("error while creating queue", zap.Error(err))
 		return nil, errors.New("error while creating queue")

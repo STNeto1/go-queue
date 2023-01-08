@@ -22,16 +22,20 @@ func init() {
 	messageDescStatus := messageFields[3].Descriptor()
 	// message.DefaultStatus holds the default value on creation for the status field.
 	message.DefaultStatus = messageDescStatus.Default.(string)
+	// messageDescRetries is the schema descriptor for retries field.
+	messageDescRetries := messageFields[4].Descriptor()
+	// message.DefaultRetries holds the default value on creation for the retries field.
+	message.DefaultRetries = messageDescRetries.Default.(uint)
 	// messageDescMaxRetries is the schema descriptor for max_retries field.
-	messageDescMaxRetries := messageFields[4].Descriptor()
+	messageDescMaxRetries := messageFields[5].Descriptor()
 	// message.DefaultMaxRetries holds the default value on creation for the max_retries field.
 	message.DefaultMaxRetries = messageDescMaxRetries.Default.(uint)
 	// messageDescAvailableFrom is the schema descriptor for available_from field.
-	messageDescAvailableFrom := messageFields[5].Descriptor()
+	messageDescAvailableFrom := messageFields[6].Descriptor()
 	// message.DefaultAvailableFrom holds the default value on creation for the available_from field.
 	message.DefaultAvailableFrom = messageDescAvailableFrom.Default.(func() time.Time)
 	// messageDescCreatedAt is the schema descriptor for created_at field.
-	messageDescCreatedAt := messageFields[6].Descriptor()
+	messageDescCreatedAt := messageFields[7].Descriptor()
 	// message.DefaultCreatedAt holds the default value on creation for the created_at field.
 	message.DefaultCreatedAt = messageDescCreatedAt.Default.(func() time.Time)
 	// messageDescID is the schema descriptor for id field.

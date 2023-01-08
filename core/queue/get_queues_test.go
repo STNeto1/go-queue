@@ -13,7 +13,7 @@ func createQueue(client *ent.Client, usr *ent.User, name string) (*ent.Queue, er
 	return client.Queue.
 		Create().
 		SetName(name).
-		AddUser(usr).
+		SetUser(usr).
 		Save(context.Background())
 }
 

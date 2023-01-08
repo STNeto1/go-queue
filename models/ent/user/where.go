@@ -477,7 +477,7 @@ func HasQueues() predicate.User {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.To(QueuesTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, QueuesTable, QueuesPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, QueuesTable, QueuesColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
@@ -489,7 +489,7 @@ func HasQueuesWith(preds ...predicate.Queue) predicate.User {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.To(QueuesInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, QueuesTable, QueuesPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, QueuesTable, QueuesColumn),
 		)
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {

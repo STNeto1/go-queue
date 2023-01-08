@@ -19,6 +19,8 @@ const (
 	FieldContentType = "content_type"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldRetries holds the string denoting the retries field in the database.
+	FieldRetries = "retries"
 	// FieldMaxRetries holds the string denoting the max_retries field in the database.
 	FieldMaxRetries = "max_retries"
 	// FieldAvailableFrom holds the string denoting the available_from field in the database.
@@ -29,11 +31,13 @@ const (
 	EdgeQueue = "queue"
 	// Table holds the table name of the message in the database.
 	Table = "messages"
-	// QueueTable is the table that holds the queue relation/edge. The primary key declared below.
-	QueueTable = "queue_messages"
+	// QueueTable is the table that holds the queue relation/edge.
+	QueueTable = "messages"
 	// QueueInverseTable is the table name for the Queue entity.
 	// It exists in this package in order to avoid circular dependency with the "queue" package.
 	QueueInverseTable = "queues"
+	// QueueColumn is the table column denoting the queue relation/edge.
+	QueueColumn = "queue_messages"
 )
 
 // Columns holds all SQL columns for message fields.
@@ -42,21 +46,27 @@ var Columns = []string{
 	FieldBody,
 	FieldContentType,
 	FieldStatus,
+	FieldRetries,
 	FieldMaxRetries,
 	FieldAvailableFrom,
 	FieldCreatedAt,
 }
 
-var (
-	// QueuePrimaryKey and QueueColumn2 are the table columns denoting the
-	// primary key for the queue relation (M2M).
-	QueuePrimaryKey = []string{"queue_id", "message_id"}
-)
+// ForeignKeys holds the SQL foreign-keys that are owned by the "messages"
+// table and are not defined as standalone fields in the schema.
+var ForeignKeys = []string{
+	"queue_messages",
+}
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
+			return true
+		}
+	}
+	for i := range ForeignKeys {
+		if column == ForeignKeys[i] {
 			return true
 		}
 	}
@@ -66,6 +76,8 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultStatus holds the default value on creation for the "status" field.
 	DefaultStatus string
+	// DefaultRetries holds the default value on creation for the "retries" field.
+	DefaultRetries uint
 	// DefaultMaxRetries holds the default value on creation for the "max_retries" field.
 	DefaultMaxRetries uint
 	// DefaultAvailableFrom holds the default value on creation for the "available_from" field.

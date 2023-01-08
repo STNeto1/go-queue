@@ -103,6 +103,13 @@ func Status(v string) predicate.Message {
 	})
 }
 
+// Retries applies equality check predicate on the "retries" field. It's identical to RetriesEQ.
+func Retries(v uint) predicate.Message {
+	return predicate.Message(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldRetries), v))
+	})
+}
+
 // MaxRetries applies equality check predicate on the "max_retries" field. It's identical to MaxRetriesEQ.
 func MaxRetries(v uint) predicate.Message {
 	return predicate.Message(func(s *sql.Selector) {
@@ -421,6 +428,70 @@ func StatusContainsFold(v string) predicate.Message {
 	})
 }
 
+// RetriesEQ applies the EQ predicate on the "retries" field.
+func RetriesEQ(v uint) predicate.Message {
+	return predicate.Message(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldRetries), v))
+	})
+}
+
+// RetriesNEQ applies the NEQ predicate on the "retries" field.
+func RetriesNEQ(v uint) predicate.Message {
+	return predicate.Message(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldRetries), v))
+	})
+}
+
+// RetriesIn applies the In predicate on the "retries" field.
+func RetriesIn(vs ...uint) predicate.Message {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Message(func(s *sql.Selector) {
+		s.Where(sql.In(s.C(FieldRetries), v...))
+	})
+}
+
+// RetriesNotIn applies the NotIn predicate on the "retries" field.
+func RetriesNotIn(vs ...uint) predicate.Message {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Message(func(s *sql.Selector) {
+		s.Where(sql.NotIn(s.C(FieldRetries), v...))
+	})
+}
+
+// RetriesGT applies the GT predicate on the "retries" field.
+func RetriesGT(v uint) predicate.Message {
+	return predicate.Message(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldRetries), v))
+	})
+}
+
+// RetriesGTE applies the GTE predicate on the "retries" field.
+func RetriesGTE(v uint) predicate.Message {
+	return predicate.Message(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldRetries), v))
+	})
+}
+
+// RetriesLT applies the LT predicate on the "retries" field.
+func RetriesLT(v uint) predicate.Message {
+	return predicate.Message(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldRetries), v))
+	})
+}
+
+// RetriesLTE applies the LTE predicate on the "retries" field.
+func RetriesLTE(v uint) predicate.Message {
+	return predicate.Message(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldRetries), v))
+	})
+}
+
 // MaxRetriesEQ applies the EQ predicate on the "max_retries" field.
 func MaxRetriesEQ(v uint) predicate.Message {
 	return predicate.Message(func(s *sql.Selector) {
@@ -619,7 +690,7 @@ func HasQueue() predicate.Message {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.To(QueueTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, QueueTable, QueuePrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, QueueTable, QueueColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
@@ -631,7 +702,7 @@ func HasQueueWith(preds ...predicate.Queue) predicate.Message {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.To(QueueInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, QueueTable, QueuePrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, QueueTable, QueueColumn),
 		)
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {

@@ -77,7 +77,7 @@ func (uq *UserQuery) QueryQueues() *QueueQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(queue.Table, queue.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, user.QueuesTable, user.QueuesPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.QueuesTable, user.QueuesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
 		return fromU, nil
@@ -391,60 +391,33 @@ func (uq *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 }
 
 func (uq *UserQuery) loadQueues(ctx context.Context, query *QueueQuery, nodes []*User, init func(*User), assign func(*User, *Queue)) error {
-	edgeIDs := make([]driver.Value, len(nodes))
-	byID := make(map[uuid.UUID]*User)
-	nids := make(map[uuid.UUID]map[*User]struct{})
-	for i, node := range nodes {
-		edgeIDs[i] = node.ID
-		byID[node.ID] = node
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
 		if init != nil {
-			init(node)
+			init(nodes[i])
 		}
 	}
-	query.Where(func(s *sql.Selector) {
-		joinT := sql.Table(user.QueuesTable)
-		s.Join(joinT).On(s.C(queue.FieldID), joinT.C(user.QueuesPrimaryKey[1]))
-		s.Where(sql.InValues(joinT.C(user.QueuesPrimaryKey[0]), edgeIDs...))
-		columns := s.SelectedColumns()
-		s.Select(joinT.C(user.QueuesPrimaryKey[0]))
-		s.AppendSelect(columns...)
-		s.SetDistinct(false)
-	})
-	if err := query.prepareQuery(ctx); err != nil {
-		return err
-	}
-	neighbors, err := query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
-		assign := spec.Assign
-		values := spec.ScanValues
-		spec.ScanValues = func(columns []string) ([]any, error) {
-			values, err := values(columns[1:])
-			if err != nil {
-				return nil, err
-			}
-			return append([]any{new(uuid.UUID)}, values...), nil
-		}
-		spec.Assign = func(columns []string, values []any) error {
-			outValue := *values[0].(*uuid.UUID)
-			inValue := *values[1].(*uuid.UUID)
-			if nids[inValue] == nil {
-				nids[inValue] = map[*User]struct{}{byID[outValue]: {}}
-				return assign(columns[1:], values[1:])
-			}
-			nids[inValue][byID[outValue]] = struct{}{}
-			return nil
-		}
-	})
+	query.withFKs = true
+	query.Where(predicate.Queue(func(s *sql.Selector) {
+		s.Where(sql.InValues(user.QueuesColumn, fks...))
+	}))
+	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		nodes, ok := nids[n.ID]
+		fk := n.user_queues
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "user_queues" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
 		if !ok {
-			return fmt.Errorf(`unexpected "queues" node returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "user_queues" returned %v for node %v`, *fk, n.ID)
 		}
-		for kn := range nodes {
-			assign(kn, n)
-		}
+		assign(node, n)
 	}
 	return nil
 }

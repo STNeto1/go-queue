@@ -50,7 +50,7 @@ func (m *MessageService) GetLatestMessage(ctx context.Context, payload *GetLates
 		return nil, lib.Rollback(tx, errors.New("failed to get latest message"))
 	}
 
-	_, err = tx.Message.
+	updatedMsg, err := tx.Message.
 		UpdateOne(msg).
 		SetStatus(schema.QueueMessageStatusProcessing).
 		Save(ctx)
@@ -65,5 +65,5 @@ func (m *MessageService) GetLatestMessage(ctx context.Context, payload *GetLates
 		return nil, err
 	}
 
-	return msg, nil
+	return updatedMsg, nil
 }

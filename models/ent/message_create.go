@@ -48,6 +48,20 @@ func (mc *MessageCreate) SetNillableStatus(s *string) *MessageCreate {
 	return mc
 }
 
+// SetRetries sets the "retries" field.
+func (mc *MessageCreate) SetRetries(u uint) *MessageCreate {
+	mc.mutation.SetRetries(u)
+	return mc
+}
+
+// SetNillableRetries sets the "retries" field if the given value is not nil.
+func (mc *MessageCreate) SetNillableRetries(u *uint) *MessageCreate {
+	if u != nil {
+		mc.SetRetries(*u)
+	}
+	return mc
+}
+
 // SetMaxRetries sets the "max_retries" field.
 func (mc *MessageCreate) SetMaxRetries(u uint) *MessageCreate {
 	mc.mutation.SetMaxRetries(u)
@@ -104,19 +118,23 @@ func (mc *MessageCreate) SetNillableID(u *uuid.UUID) *MessageCreate {
 	return mc
 }
 
-// AddQueueIDs adds the "queue" edge to the Queue entity by IDs.
-func (mc *MessageCreate) AddQueueIDs(ids ...uuid.UUID) *MessageCreate {
-	mc.mutation.AddQueueIDs(ids...)
+// SetQueueID sets the "queue" edge to the Queue entity by ID.
+func (mc *MessageCreate) SetQueueID(id uuid.UUID) *MessageCreate {
+	mc.mutation.SetQueueID(id)
 	return mc
 }
 
-// AddQueue adds the "queue" edges to the Queue entity.
-func (mc *MessageCreate) AddQueue(q ...*Queue) *MessageCreate {
-	ids := make([]uuid.UUID, len(q))
-	for i := range q {
-		ids[i] = q[i].ID
+// SetNillableQueueID sets the "queue" edge to the Queue entity by ID if the given value is not nil.
+func (mc *MessageCreate) SetNillableQueueID(id *uuid.UUID) *MessageCreate {
+	if id != nil {
+		mc = mc.SetQueueID(*id)
 	}
-	return mc.AddQueueIDs(ids...)
+	return mc
+}
+
+// SetQueue sets the "queue" edge to the Queue entity.
+func (mc *MessageCreate) SetQueue(q *Queue) *MessageCreate {
+	return mc.SetQueueID(q.ID)
 }
 
 // Mutation returns the MessageMutation object of the builder.
@@ -200,6 +218,10 @@ func (mc *MessageCreate) defaults() {
 		v := message.DefaultStatus
 		mc.mutation.SetStatus(v)
 	}
+	if _, ok := mc.mutation.Retries(); !ok {
+		v := message.DefaultRetries
+		mc.mutation.SetRetries(v)
+	}
 	if _, ok := mc.mutation.MaxRetries(); !ok {
 		v := message.DefaultMaxRetries
 		mc.mutation.SetMaxRetries(v)
@@ -228,6 +250,9 @@ func (mc *MessageCreate) check() error {
 	}
 	if _, ok := mc.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Message.status"`)}
+	}
+	if _, ok := mc.mutation.Retries(); !ok {
+		return &ValidationError{Name: "retries", err: errors.New(`ent: missing required field "Message.retries"`)}
 	}
 	if _, ok := mc.mutation.MaxRetries(); !ok {
 		return &ValidationError{Name: "max_retries", err: errors.New(`ent: missing required field "Message.max_retries"`)}
@@ -286,6 +311,10 @@ func (mc *MessageCreate) createSpec() (*Message, *sqlgraph.CreateSpec) {
 		_spec.SetField(message.FieldStatus, field.TypeString, value)
 		_node.Status = value
 	}
+	if value, ok := mc.mutation.Retries(); ok {
+		_spec.SetField(message.FieldRetries, field.TypeUint, value)
+		_node.Retries = value
+	}
 	if value, ok := mc.mutation.MaxRetries(); ok {
 		_spec.SetField(message.FieldMaxRetries, field.TypeUint, value)
 		_node.MaxRetries = value
@@ -300,10 +329,10 @@ func (mc *MessageCreate) createSpec() (*Message, *sqlgraph.CreateSpec) {
 	}
 	if nodes := mc.mutation.QueueIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.M2O,
 			Inverse: true,
 			Table:   message.QueueTable,
-			Columns: message.QueuePrimaryKey,
+			Columns: []string{message.QueueColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
@@ -315,6 +344,7 @@ func (mc *MessageCreate) createSpec() (*Message, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		_node.queue_messages = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

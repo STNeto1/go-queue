@@ -7,7 +7,6 @@ import (
 	"_models/ent/predicate"
 	"_models/ent/queue"
 	"context"
-	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -27,6 +26,7 @@ type MessageQuery struct {
 	fields     []string
 	predicates []predicate.Message
 	withQueue  *QueueQuery
+	withFKs    bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -77,7 +77,7 @@ func (mq *MessageQuery) QueryQueue() *QueueQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(message.Table, message.FieldID, selector),
 			sqlgraph.To(queue.Table, queue.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, message.QueueTable, message.QueuePrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, message.QueueTable, message.QueueColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(mq.driver.Dialect(), step)
 		return fromU, nil
@@ -357,11 +357,18 @@ func (mq *MessageQuery) prepareQuery(ctx context.Context) error {
 func (mq *MessageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Message, error) {
 	var (
 		nodes       = []*Message{}
+		withFKs     = mq.withFKs
 		_spec       = mq.querySpec()
 		loadedTypes = [1]bool{
 			mq.withQueue != nil,
 		}
 	)
+	if mq.withQueue != nil {
+		withFKs = true
+	}
+	if withFKs {
+		_spec.Node.Columns = append(_spec.Node.Columns, message.ForeignKeys...)
+	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Message).scanValues(nil, columns)
 	}
@@ -381,9 +388,8 @@ func (mq *MessageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Mess
 		return nodes, nil
 	}
 	if query := mq.withQueue; query != nil {
-		if err := mq.loadQueue(ctx, query, nodes,
-			func(n *Message) { n.Edges.Queue = []*Queue{} },
-			func(n *Message, e *Queue) { n.Edges.Queue = append(n.Edges.Queue, e) }); err != nil {
+		if err := mq.loadQueue(ctx, query, nodes, nil,
+			func(n *Message, e *Queue) { n.Edges.Queue = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -391,59 +397,30 @@ func (mq *MessageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Mess
 }
 
 func (mq *MessageQuery) loadQueue(ctx context.Context, query *QueueQuery, nodes []*Message, init func(*Message), assign func(*Message, *Queue)) error {
-	edgeIDs := make([]driver.Value, len(nodes))
-	byID := make(map[uuid.UUID]*Message)
-	nids := make(map[uuid.UUID]map[*Message]struct{})
-	for i, node := range nodes {
-		edgeIDs[i] = node.ID
-		byID[node.ID] = node
-		if init != nil {
-			init(node)
+	ids := make([]uuid.UUID, 0, len(nodes))
+	nodeids := make(map[uuid.UUID][]*Message)
+	for i := range nodes {
+		if nodes[i].queue_messages == nil {
+			continue
 		}
+		fk := *nodes[i].queue_messages
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
 	}
-	query.Where(func(s *sql.Selector) {
-		joinT := sql.Table(message.QueueTable)
-		s.Join(joinT).On(s.C(queue.FieldID), joinT.C(message.QueuePrimaryKey[0]))
-		s.Where(sql.InValues(joinT.C(message.QueuePrimaryKey[1]), edgeIDs...))
-		columns := s.SelectedColumns()
-		s.Select(joinT.C(message.QueuePrimaryKey[1]))
-		s.AppendSelect(columns...)
-		s.SetDistinct(false)
-	})
-	if err := query.prepareQuery(ctx); err != nil {
-		return err
-	}
-	neighbors, err := query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
-		assign := spec.Assign
-		values := spec.ScanValues
-		spec.ScanValues = func(columns []string) ([]any, error) {
-			values, err := values(columns[1:])
-			if err != nil {
-				return nil, err
-			}
-			return append([]any{new(uuid.UUID)}, values...), nil
-		}
-		spec.Assign = func(columns []string, values []any) error {
-			outValue := *values[0].(*uuid.UUID)
-			inValue := *values[1].(*uuid.UUID)
-			if nids[inValue] == nil {
-				nids[inValue] = map[*Message]struct{}{byID[outValue]: {}}
-				return assign(columns[1:], values[1:])
-			}
-			nids[inValue][byID[outValue]] = struct{}{}
-			return nil
-		}
-	})
+	query.Where(queue.IDIn(ids...))
+	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		nodes, ok := nids[n.ID]
+		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected "queue" node returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "queue_messages" returned %v`, n.ID)
 		}
-		for kn := range nodes {
-			assign(kn, n)
+		for i := range nodes {
+			assign(nodes[i], n)
 		}
 	}
 	return nil

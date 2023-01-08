@@ -25,16 +25,20 @@ const (
 	EdgeMessages = "messages"
 	// Table holds the table name of the queue in the database.
 	Table = "queues"
-	// UserTable is the table that holds the user relation/edge. The primary key declared below.
-	UserTable = "user_queues"
+	// UserTable is the table that holds the user relation/edge.
+	UserTable = "queues"
 	// UserInverseTable is the table name for the User entity.
 	// It exists in this package in order to avoid circular dependency with the "user" package.
 	UserInverseTable = "users"
-	// MessagesTable is the table that holds the messages relation/edge. The primary key declared below.
-	MessagesTable = "queue_messages"
+	// UserColumn is the table column denoting the user relation/edge.
+	UserColumn = "user_queues"
+	// MessagesTable is the table that holds the messages relation/edge.
+	MessagesTable = "messages"
 	// MessagesInverseTable is the table name for the Message entity.
 	// It exists in this package in order to avoid circular dependency with the "message" package.
 	MessagesInverseTable = "messages"
+	// MessagesColumn is the table column denoting the messages relation/edge.
+	MessagesColumn = "queue_messages"
 )
 
 // Columns holds all SQL columns for queue fields.
@@ -45,19 +49,21 @@ var Columns = []string{
 	FieldCreatedAt,
 }
 
-var (
-	// UserPrimaryKey and UserColumn2 are the table columns denoting the
-	// primary key for the user relation (M2M).
-	UserPrimaryKey = []string{"user_id", "queue_id"}
-	// MessagesPrimaryKey and MessagesColumn2 are the table columns denoting the
-	// primary key for the messages relation (M2M).
-	MessagesPrimaryKey = []string{"queue_id", "message_id"}
-)
+// ForeignKeys holds the SQL foreign-keys that are owned by the "queues"
+// table and are not defined as standalone fields in the schema.
+var ForeignKeys = []string{
+	"user_queues",
+}
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
+			return true
+		}
+	}
+	for i := range ForeignKeys {
+		if column == ForeignKeys[i] {
 			return true
 		}
 	}

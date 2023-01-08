@@ -71,19 +71,23 @@ func (qc *QueueCreate) SetNillableID(u *uuid.UUID) *QueueCreate {
 	return qc
 }
 
-// AddUserIDs adds the "user" edge to the User entity by IDs.
-func (qc *QueueCreate) AddUserIDs(ids ...uuid.UUID) *QueueCreate {
-	qc.mutation.AddUserIDs(ids...)
+// SetUserID sets the "user" edge to the User entity by ID.
+func (qc *QueueCreate) SetUserID(id uuid.UUID) *QueueCreate {
+	qc.mutation.SetUserID(id)
 	return qc
 }
 
-// AddUser adds the "user" edges to the User entity.
-func (qc *QueueCreate) AddUser(u ...*User) *QueueCreate {
-	ids := make([]uuid.UUID, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
+// SetNillableUserID sets the "user" edge to the User entity by ID if the given value is not nil.
+func (qc *QueueCreate) SetNillableUserID(id *uuid.UUID) *QueueCreate {
+	if id != nil {
+		qc = qc.SetUserID(*id)
 	}
-	return qc.AddUserIDs(ids...)
+	return qc
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (qc *QueueCreate) SetUser(u *User) *QueueCreate {
+	return qc.SetUserID(u.ID)
 }
 
 // AddMessageIDs adds the "messages" edge to the Message entity by IDs.
@@ -253,10 +257,10 @@ func (qc *QueueCreate) createSpec() (*Queue, *sqlgraph.CreateSpec) {
 	}
 	if nodes := qc.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.M2O,
 			Inverse: true,
 			Table:   queue.UserTable,
-			Columns: queue.UserPrimaryKey,
+			Columns: []string{queue.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
@@ -268,14 +272,15 @@ func (qc *QueueCreate) createSpec() (*Queue, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		_node.user_queues = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := qc.mutation.MessagesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   queue.MessagesTable,
-			Columns: queue.MessagesPrimaryKey,
+			Columns: []string{queue.MessagesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{

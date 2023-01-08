@@ -27,7 +27,7 @@ func (Queue) Fields() []ent.Field {
 // Edges of the Queue.
 func (Queue) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("user", User.Type).Ref("queues"),
+		edge.From("user", User.Type).Ref("queues").Unique(),
 		edge.To("messages", Message.Type),
 	}
 }

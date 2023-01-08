@@ -36,7 +36,7 @@ func (m *MessageService) SendMessage(ctx context.Context, payload *SendMessagePa
 	available := time.Now().Add(time.Duration(payload.SecondsOffset) * time.Second)
 
 	msg, err := m.client.Message.Create().
-		AddQueue(q).
+		SetQueue(q).
 		SetBody(payload.Body).
 		SetContentType(payload.ContentType).
 		SetMaxRetries(retries).

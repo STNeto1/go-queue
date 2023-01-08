@@ -13,7 +13,7 @@ import (
 
 func createQueueMessage(client *ent.Client, usr *ent.User, q *ent.Queue, body string) (*ent.Message, error) {
 	return client.Message.Create().
-		AddQueue(q).
+		SetQueue(q).
 		SetBody(body).
 		SetContentType("any content type").
 		SetMaxRetries(5).

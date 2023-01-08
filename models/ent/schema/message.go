@@ -32,6 +32,7 @@ func (Message) Fields() []ent.Field {
 		field.Text("body"),
 		field.String("content_type"),
 		field.String("status").Default(QueueMessageStatusPending),
+		field.Uint("retries").Default(0),
 		field.Uint("max_retries").Default(5),
 		field.Time("available_from").Default(time.Now),
 		field.Time("created_at").Default(time.Now),
@@ -41,6 +42,6 @@ func (Message) Fields() []ent.Field {
 // Edges of the Message.
 func (Message) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("queue", Queue.Type).Ref("messages"),
+		edge.From("queue", Queue.Type).Ref("messages").Unique(),
 	}
 }

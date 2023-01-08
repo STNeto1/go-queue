@@ -336,7 +336,7 @@ func HasUser() predicate.Queue {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.To(UserTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, UserTable, UserPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, UserTable, UserColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
@@ -348,7 +348,7 @@ func HasUserWith(preds ...predicate.User) predicate.Queue {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.To(UserInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, UserTable, UserPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, UserTable, UserColumn),
 		)
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
@@ -364,7 +364,7 @@ func HasMessages() predicate.Queue {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.To(MessagesTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, MessagesTable, MessagesPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, MessagesTable, MessagesColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
@@ -376,7 +376,7 @@ func HasMessagesWith(preds ...predicate.Message) predicate.Queue {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.To(MessagesInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, MessagesTable, MessagesPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, MessagesTable, MessagesColumn),
 		)
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {

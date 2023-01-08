@@ -231,7 +231,7 @@ func (c *MessageClient) QueryQueue(m *Message) *QueueQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(message.Table, message.FieldID, id),
 			sqlgraph.To(queue.Table, queue.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, message.QueueTable, message.QueuePrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, message.QueueTable, message.QueueColumn),
 		)
 		fromV = sqlgraph.Neighbors(m.driver.Dialect(), step)
 		return fromV, nil
@@ -337,7 +337,7 @@ func (c *QueueClient) QueryUser(q *Queue) *UserQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(queue.Table, queue.FieldID, id),
 			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, queue.UserTable, queue.UserPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, queue.UserTable, queue.UserColumn),
 		)
 		fromV = sqlgraph.Neighbors(q.driver.Dialect(), step)
 		return fromV, nil
@@ -353,7 +353,7 @@ func (c *QueueClient) QueryMessages(q *Queue) *MessageQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(queue.Table, queue.FieldID, id),
 			sqlgraph.To(message.Table, message.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, queue.MessagesTable, queue.MessagesPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, queue.MessagesTable, queue.MessagesColumn),
 		)
 		fromV = sqlgraph.Neighbors(q.driver.Dialect(), step)
 		return fromV, nil
@@ -459,7 +459,7 @@ func (c *UserClient) QueryQueues(u *User) *QueueQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, id),
 			sqlgraph.To(queue.Table, queue.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, user.QueuesTable, user.QueuesPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.QueuesTable, user.QueuesColumn),
 		)
 		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
 		return fromV, nil
