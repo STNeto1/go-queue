@@ -35,8 +35,8 @@ func TestErrorWhenReadingQueueWithNoMessages(t *testing.T) {
 	assert.NoError(t, err)
 
 	msg, err := s.GetLatestMessage(context.Background(), &message.GetLatestMessagePayload{
-		QueueID: q.ID,
-		User:    usr,
+		QueueRef: q.ID,
+		User:     usr,
 	})
 	assert.Nil(t, msg)
 	assert.Error(t, err)
@@ -60,8 +60,8 @@ func TestGetLatestMessage(t *testing.T) {
 	assert.NoError(t, err)
 
 	msg2, err := s.GetLatestMessage(context.Background(), &message.GetLatestMessagePayload{
-		QueueID: q.ID,
-		User:    usr,
+		QueueRef: q.Ref,
+		User:     usr,
 	})
 	assert.NotNil(t, msg2)
 	assert.NoError(t, err)

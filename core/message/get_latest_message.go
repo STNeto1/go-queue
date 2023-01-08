@@ -17,13 +17,13 @@ import (
 )
 
 type GetLatestMessagePayload struct {
-	QueueID uuid.UUID
-	User    *ent.User
+	QueueRef uuid.UUID
+	User     *ent.User
 }
 
 func (m *MessageService) GetLatestMessage(ctx context.Context, payload *GetLatestMessagePayload) (*ent.Message, error) {
-	q, err := m.qs.ShowQueue(ctx, cq.ShowQueuePayload{
-		ID:   payload.QueueID,
+	q, err := m.qs.ShowQueueFromRef(ctx, cq.ShowQueuePayload{
+		ID:   payload.QueueRef,
 		User: payload.User,
 	})
 	if err != nil {

@@ -44,7 +44,7 @@ func TestSendMessageToQueue(t *testing.T) {
 	assert.NoError(t, err)
 
 	msg, err := s.SendMessage(context.Background(), &message.SendMessagePayload{
-		QueueID:       q.ID,
+		QueueRef:      q.Ref,
 		User:          usr,
 		Body:          "some-body",
 		ContentType:   "some-content-type",
@@ -69,7 +69,7 @@ func TestSendMessageToQueueDefaultValues(t *testing.T) {
 	assert.NoError(t, err)
 
 	msg, err := s.SendMessage(context.Background(), &message.SendMessagePayload{
-		QueueID:       q.ID,
+		QueueRef:      q.Ref,
 		User:          usr,
 		Body:          "some-body",
 		ContentType:   "some-content-type",
@@ -96,7 +96,7 @@ func TestSendMessageToQueueWithOffset(t *testing.T) {
 	assert.NoError(t, err)
 
 	msg, err := s.SendMessage(context.Background(), &message.SendMessagePayload{
-		QueueID:       q.ID,
+		QueueRef:      q.Ref,
 		User:          usr,
 		Body:          "some-body",
 		ContentType:   "some-content-type",

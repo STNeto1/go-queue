@@ -11,7 +11,7 @@ import (
 )
 
 type SendMessagePayload struct {
-	QueueID       uuid.UUID
+	QueueRef      uuid.UUID
 	User          *ent.User
 	Body          string
 	ContentType   string
@@ -20,8 +20,8 @@ type SendMessagePayload struct {
 }
 
 func (m *MessageService) SendMessage(ctx context.Context, payload *SendMessagePayload) (*ent.Message, error) {
-	q, err := m.qs.ShowQueue(ctx, queue.ShowQueuePayload{
-		ID:   payload.QueueID,
+	q, err := m.qs.ShowQueueFromRef(ctx, queue.ShowQueuePayload{
+		ID:   payload.QueueRef,
 		User: payload.User,
 	})
 	if err != nil {

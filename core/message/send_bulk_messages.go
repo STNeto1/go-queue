@@ -20,14 +20,14 @@ type BulkMessageElement struct {
 }
 
 type SendBulkMessagesPayload struct {
-	QueueID  uuid.UUID
+	QueueRef uuid.UUID
 	User     *ent.User
 	Messages []BulkMessageElement
 }
 
 func (m *MessageService) SendBulkMessages(ctx context.Context, payload *SendBulkMessagesPayload) ([]*ent.Message, error) {
-	q, err := m.qs.ShowQueue(ctx, queue.ShowQueuePayload{
-		ID:   payload.QueueID,
+	q, err := m.qs.ShowQueueFromRef(ctx, queue.ShowQueuePayload{
+		ID:   payload.QueueRef,
 		User: payload.User,
 	})
 	if err != nil {

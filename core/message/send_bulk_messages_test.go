@@ -22,8 +22,8 @@ func TestSendBulkMessages(t *testing.T) {
 	assert.NoError(t, err)
 
 	msgs, err := s.SendBulkMessages(context.Background(), &message.SendBulkMessagesPayload{
-		QueueID: q.ID,
-		User:    usr,
+		QueueRef: q.Ref,
+		User:     usr,
 		Messages: []message.BulkMessageElement{
 			{
 				Body:          "some-body",
