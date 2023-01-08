@@ -24,3 +24,13 @@ func (q *QueueService) ShowQueue(ctx context.Context, payload ShowQueuePayload) 
 
 	return queue, nil
 }
+
+func (q *QueueService) ShowQueueFromRef(ctx context.Context, payload ShowQueuePayload) (*ent.Queue, error) {
+	queue, err := q.client.Queue.Query().Where(queue.HasUserWith(user.ID(payload.User.ID))).Where(queue.Ref(payload.ID)).First(ctx)
+	if err != nil {
+		q.logger.Error("failed to show queue", zap.Error(err))
+		return nil, err
+	}
+
+	return queue, nil
+}
