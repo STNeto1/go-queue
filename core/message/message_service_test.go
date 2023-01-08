@@ -2,6 +2,7 @@ package message_test
 
 import (
 	"_core/message"
+	"_core/queue"
 	"_models/ent"
 	"_models/ent/enttest"
 	"testing"
@@ -15,7 +16,9 @@ func CreateMessageService(t *testing.T) (*message.MessageService, *ent.Client, *
 	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
 	logger := zap.NewNop()
 
-	return message.NewMessageService(client, logger), client, logger
+	qs := queue.NewQueueService(client, logger)
+
+	return message.NewMessageService(client, logger, qs), client, logger
 }
 
 func TestCreateMessageService(t *testing.T) {
