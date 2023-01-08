@@ -3,9 +3,9 @@
 package ent
 
 import (
+	"_models/ent/message"
 	"_models/ent/predicate"
 	"_models/ent/queue"
-	"_models/ent/queuemessage"
 	"_models/ent/user"
 	"context"
 	"errors"
@@ -66,17 +66,17 @@ func (qu *QueueUpdate) AddUser(u ...*User) *QueueUpdate {
 	return qu.AddUserIDs(ids...)
 }
 
-// AddMessageIDs adds the "messages" edge to the QueueMessage entity by IDs.
+// AddMessageIDs adds the "messages" edge to the Message entity by IDs.
 func (qu *QueueUpdate) AddMessageIDs(ids ...uuid.UUID) *QueueUpdate {
 	qu.mutation.AddMessageIDs(ids...)
 	return qu
 }
 
-// AddMessages adds the "messages" edges to the QueueMessage entity.
-func (qu *QueueUpdate) AddMessages(q ...*QueueMessage) *QueueUpdate {
-	ids := make([]uuid.UUID, len(q))
-	for i := range q {
-		ids[i] = q[i].ID
+// AddMessages adds the "messages" edges to the Message entity.
+func (qu *QueueUpdate) AddMessages(m ...*Message) *QueueUpdate {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
 	}
 	return qu.AddMessageIDs(ids...)
 }
@@ -107,23 +107,23 @@ func (qu *QueueUpdate) RemoveUser(u ...*User) *QueueUpdate {
 	return qu.RemoveUserIDs(ids...)
 }
 
-// ClearMessages clears all "messages" edges to the QueueMessage entity.
+// ClearMessages clears all "messages" edges to the Message entity.
 func (qu *QueueUpdate) ClearMessages() *QueueUpdate {
 	qu.mutation.ClearMessages()
 	return qu
 }
 
-// RemoveMessageIDs removes the "messages" edge to QueueMessage entities by IDs.
+// RemoveMessageIDs removes the "messages" edge to Message entities by IDs.
 func (qu *QueueUpdate) RemoveMessageIDs(ids ...uuid.UUID) *QueueUpdate {
 	qu.mutation.RemoveMessageIDs(ids...)
 	return qu
 }
 
-// RemoveMessages removes "messages" edges to QueueMessage entities.
-func (qu *QueueUpdate) RemoveMessages(q ...*QueueMessage) *QueueUpdate {
-	ids := make([]uuid.UUID, len(q))
-	for i := range q {
-		ids[i] = q[i].ID
+// RemoveMessages removes "messages" edges to Message entities.
+func (qu *QueueUpdate) RemoveMessages(m ...*Message) *QueueUpdate {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
 	}
 	return qu.RemoveMessageIDs(ids...)
 }
@@ -270,7 +270,7 @@ func (qu *QueueUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeUUID,
-					Column: queuemessage.FieldID,
+					Column: message.FieldID,
 				},
 			},
 		}
@@ -286,7 +286,7 @@ func (qu *QueueUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeUUID,
-					Column: queuemessage.FieldID,
+					Column: message.FieldID,
 				},
 			},
 		}
@@ -305,7 +305,7 @@ func (qu *QueueUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeUUID,
-					Column: queuemessage.FieldID,
+					Column: message.FieldID,
 				},
 			},
 		}
@@ -368,17 +368,17 @@ func (quo *QueueUpdateOne) AddUser(u ...*User) *QueueUpdateOne {
 	return quo.AddUserIDs(ids...)
 }
 
-// AddMessageIDs adds the "messages" edge to the QueueMessage entity by IDs.
+// AddMessageIDs adds the "messages" edge to the Message entity by IDs.
 func (quo *QueueUpdateOne) AddMessageIDs(ids ...uuid.UUID) *QueueUpdateOne {
 	quo.mutation.AddMessageIDs(ids...)
 	return quo
 }
 
-// AddMessages adds the "messages" edges to the QueueMessage entity.
-func (quo *QueueUpdateOne) AddMessages(q ...*QueueMessage) *QueueUpdateOne {
-	ids := make([]uuid.UUID, len(q))
-	for i := range q {
-		ids[i] = q[i].ID
+// AddMessages adds the "messages" edges to the Message entity.
+func (quo *QueueUpdateOne) AddMessages(m ...*Message) *QueueUpdateOne {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
 	}
 	return quo.AddMessageIDs(ids...)
 }
@@ -409,23 +409,23 @@ func (quo *QueueUpdateOne) RemoveUser(u ...*User) *QueueUpdateOne {
 	return quo.RemoveUserIDs(ids...)
 }
 
-// ClearMessages clears all "messages" edges to the QueueMessage entity.
+// ClearMessages clears all "messages" edges to the Message entity.
 func (quo *QueueUpdateOne) ClearMessages() *QueueUpdateOne {
 	quo.mutation.ClearMessages()
 	return quo
 }
 
-// RemoveMessageIDs removes the "messages" edge to QueueMessage entities by IDs.
+// RemoveMessageIDs removes the "messages" edge to Message entities by IDs.
 func (quo *QueueUpdateOne) RemoveMessageIDs(ids ...uuid.UUID) *QueueUpdateOne {
 	quo.mutation.RemoveMessageIDs(ids...)
 	return quo
 }
 
-// RemoveMessages removes "messages" edges to QueueMessage entities.
-func (quo *QueueUpdateOne) RemoveMessages(q ...*QueueMessage) *QueueUpdateOne {
-	ids := make([]uuid.UUID, len(q))
-	for i := range q {
-		ids[i] = q[i].ID
+// RemoveMessages removes "messages" edges to Message entities.
+func (quo *QueueUpdateOne) RemoveMessages(m ...*Message) *QueueUpdateOne {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
 	}
 	return quo.RemoveMessageIDs(ids...)
 }
@@ -602,7 +602,7 @@ func (quo *QueueUpdateOne) sqlSave(ctx context.Context) (_node *Queue, err error
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeUUID,
-					Column: queuemessage.FieldID,
+					Column: message.FieldID,
 				},
 			},
 		}
@@ -618,7 +618,7 @@ func (quo *QueueUpdateOne) sqlSave(ctx context.Context) (_node *Queue, err error
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeUUID,
-					Column: queuemessage.FieldID,
+					Column: message.FieldID,
 				},
 			},
 		}
@@ -637,7 +637,7 @@ func (quo *QueueUpdateOne) sqlSave(ctx context.Context) (_node *Queue, err error
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeUUID,
-					Column: queuemessage.FieldID,
+					Column: message.FieldID,
 				},
 			},
 		}

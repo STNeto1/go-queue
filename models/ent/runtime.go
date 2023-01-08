@@ -3,8 +3,8 @@
 package ent
 
 import (
+	"_models/ent/message"
 	"_models/ent/queue"
-	"_models/ent/queuemessage"
 	"_models/ent/schema"
 	"_models/ent/user"
 	"time"
@@ -16,6 +16,28 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	messageFields := schema.Message{}.Fields()
+	_ = messageFields
+	// messageDescStatus is the schema descriptor for status field.
+	messageDescStatus := messageFields[3].Descriptor()
+	// message.DefaultStatus holds the default value on creation for the status field.
+	message.DefaultStatus = messageDescStatus.Default.(string)
+	// messageDescMaxRetries is the schema descriptor for max_retries field.
+	messageDescMaxRetries := messageFields[4].Descriptor()
+	// message.DefaultMaxRetries holds the default value on creation for the max_retries field.
+	message.DefaultMaxRetries = messageDescMaxRetries.Default.(uint)
+	// messageDescAvailableFrom is the schema descriptor for available_from field.
+	messageDescAvailableFrom := messageFields[5].Descriptor()
+	// message.DefaultAvailableFrom holds the default value on creation for the available_from field.
+	message.DefaultAvailableFrom = messageDescAvailableFrom.Default.(func() time.Time)
+	// messageDescCreatedAt is the schema descriptor for created_at field.
+	messageDescCreatedAt := messageFields[6].Descriptor()
+	// message.DefaultCreatedAt holds the default value on creation for the created_at field.
+	message.DefaultCreatedAt = messageDescCreatedAt.Default.(func() time.Time)
+	// messageDescID is the schema descriptor for id field.
+	messageDescID := messageFields[0].Descriptor()
+	// message.DefaultID holds the default value on creation for the id field.
+	message.DefaultID = messageDescID.Default.(func() uuid.UUID)
 	queueFields := schema.Queue{}.Fields()
 	_ = queueFields
 	// queueDescRef is the schema descriptor for ref field.
@@ -30,28 +52,6 @@ func init() {
 	queueDescID := queueFields[0].Descriptor()
 	// queue.DefaultID holds the default value on creation for the id field.
 	queue.DefaultID = queueDescID.Default.(func() uuid.UUID)
-	queuemessageFields := schema.QueueMessage{}.Fields()
-	_ = queuemessageFields
-	// queuemessageDescStatus is the schema descriptor for status field.
-	queuemessageDescStatus := queuemessageFields[3].Descriptor()
-	// queuemessage.DefaultStatus holds the default value on creation for the status field.
-	queuemessage.DefaultStatus = queuemessageDescStatus.Default.(string)
-	// queuemessageDescMaxRetries is the schema descriptor for max_retries field.
-	queuemessageDescMaxRetries := queuemessageFields[4].Descriptor()
-	// queuemessage.DefaultMaxRetries holds the default value on creation for the max_retries field.
-	queuemessage.DefaultMaxRetries = queuemessageDescMaxRetries.Default.(uint)
-	// queuemessageDescAvailableFrom is the schema descriptor for available_from field.
-	queuemessageDescAvailableFrom := queuemessageFields[5].Descriptor()
-	// queuemessage.DefaultAvailableFrom holds the default value on creation for the available_from field.
-	queuemessage.DefaultAvailableFrom = queuemessageDescAvailableFrom.Default.(func() time.Time)
-	// queuemessageDescCreatedAt is the schema descriptor for created_at field.
-	queuemessageDescCreatedAt := queuemessageFields[6].Descriptor()
-	// queuemessage.DefaultCreatedAt holds the default value on creation for the created_at field.
-	queuemessage.DefaultCreatedAt = queuemessageDescCreatedAt.Default.(func() time.Time)
-	// queuemessageDescID is the schema descriptor for id field.
-	queuemessageDescID := queuemessageFields[0].Descriptor()
-	// queuemessage.DefaultID holds the default value on creation for the id field.
-	queuemessage.DefaultID = queuemessageDescID.Default.(func() uuid.UUID)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescCreatedAt is the schema descriptor for created_at field.

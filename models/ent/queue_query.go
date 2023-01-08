@@ -3,9 +3,9 @@
 package ent
 
 import (
+	"_models/ent/message"
 	"_models/ent/predicate"
 	"_models/ent/queue"
-	"_models/ent/queuemessage"
 	"_models/ent/user"
 	"context"
 	"database/sql/driver"
@@ -28,7 +28,7 @@ type QueueQuery struct {
 	fields       []string
 	predicates   []predicate.Queue
 	withUser     *UserQuery
-	withMessages *QueueMessageQuery
+	withMessages *MessageQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -88,8 +88,8 @@ func (qq *QueueQuery) QueryUser() *UserQuery {
 }
 
 // QueryMessages chains the current query on the "messages" edge.
-func (qq *QueueQuery) QueryMessages() *QueueMessageQuery {
-	query := &QueueMessageQuery{config: qq.config}
+func (qq *QueueQuery) QueryMessages() *MessageQuery {
+	query := &MessageQuery{config: qq.config}
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := qq.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -100,7 +100,7 @@ func (qq *QueueQuery) QueryMessages() *QueueMessageQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(queue.Table, queue.FieldID, selector),
-			sqlgraph.To(queuemessage.Table, queuemessage.FieldID),
+			sqlgraph.To(message.Table, message.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, queue.MessagesTable, queue.MessagesPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(qq.driver.Dialect(), step)
@@ -312,8 +312,8 @@ func (qq *QueueQuery) WithUser(opts ...func(*UserQuery)) *QueueQuery {
 
 // WithMessages tells the query-builder to eager-load the nodes that are connected to
 // the "messages" edge. The optional arguments are used to configure the query builder of the edge.
-func (qq *QueueQuery) WithMessages(opts ...func(*QueueMessageQuery)) *QueueQuery {
-	query := &QueueMessageQuery{config: qq.config}
+func (qq *QueueQuery) WithMessages(opts ...func(*MessageQuery)) *QueueQuery {
+	query := &MessageQuery{config: qq.config}
 	for _, opt := range opts {
 		opt(query)
 	}
@@ -426,8 +426,8 @@ func (qq *QueueQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Queue,
 	}
 	if query := qq.withMessages; query != nil {
 		if err := qq.loadMessages(ctx, query, nodes,
-			func(n *Queue) { n.Edges.Messages = []*QueueMessage{} },
-			func(n *Queue, e *QueueMessage) { n.Edges.Messages = append(n.Edges.Messages, e) }); err != nil {
+			func(n *Queue) { n.Edges.Messages = []*Message{} },
+			func(n *Queue, e *Message) { n.Edges.Messages = append(n.Edges.Messages, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -492,7 +492,7 @@ func (qq *QueueQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*Q
 	}
 	return nil
 }
-func (qq *QueueQuery) loadMessages(ctx context.Context, query *QueueMessageQuery, nodes []*Queue, init func(*Queue), assign func(*Queue, *QueueMessage)) error {
+func (qq *QueueQuery) loadMessages(ctx context.Context, query *MessageQuery, nodes []*Queue, init func(*Queue), assign func(*Queue, *Message)) error {
 	edgeIDs := make([]driver.Value, len(nodes))
 	byID := make(map[uuid.UUID]*Queue)
 	nids := make(map[uuid.UUID]map[*Queue]struct{})
@@ -505,7 +505,7 @@ func (qq *QueueQuery) loadMessages(ctx context.Context, query *QueueMessageQuery
 	}
 	query.Where(func(s *sql.Selector) {
 		joinT := sql.Table(queue.MessagesTable)
-		s.Join(joinT).On(s.C(queuemessage.FieldID), joinT.C(queue.MessagesPrimaryKey[1]))
+		s.Join(joinT).On(s.C(message.FieldID), joinT.C(queue.MessagesPrimaryKey[1]))
 		s.Where(sql.InValues(joinT.C(queue.MessagesPrimaryKey[0]), edgeIDs...))
 		columns := s.SelectedColumns()
 		s.Select(joinT.C(queue.MessagesPrimaryKey[0]))

@@ -20,13 +20,13 @@ const (
 	QueueMessageStatusFailed = "failed"
 )
 
-// QueueMessage holds the schema definition for the QueueMessage entity.
-type QueueMessage struct {
+// Message holds the schema definition for the Message entity.
+type Message struct {
 	ent.Schema
 }
 
-// Fields of the QueueMessage.
-func (QueueMessage) Fields() []ent.Field {
+// Fields of the Message.
+func (Message) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).Default(uuid.New),
 		field.Text("body"),
@@ -38,8 +38,8 @@ func (QueueMessage) Fields() []ent.Field {
 	}
 }
 
-// Edges of the QueueMessage.
-func (QueueMessage) Edges() []ent.Edge {
+// Edges of the Message.
+func (Message) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("queue", Queue.Type).Ref("messages"),
 	}

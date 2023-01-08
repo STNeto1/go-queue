@@ -10,8 +10,8 @@ import (
 
 	"_models/ent/migrate"
 
+	"_models/ent/message"
 	"_models/ent/queue"
-	"_models/ent/queuemessage"
 	"_models/ent/user"
 
 	"entgo.io/ent/dialect"
@@ -25,10 +25,10 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// Message is the client for interacting with the Message builders.
+	Message *MessageClient
 	// Queue is the client for interacting with the Queue builders.
 	Queue *QueueClient
-	// QueueMessage is the client for interacting with the QueueMessage builders.
-	QueueMessage *QueueMessageClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 }
@@ -44,8 +44,8 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.Message = NewMessageClient(c.config)
 	c.Queue = NewQueueClient(c.config)
-	c.QueueMessage = NewQueueMessageClient(c.config)
 	c.User = NewUserClient(c.config)
 }
 
@@ -78,11 +78,11 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:          ctx,
-		config:       cfg,
-		Queue:        NewQueueClient(cfg),
-		QueueMessage: NewQueueMessageClient(cfg),
-		User:         NewUserClient(cfg),
+		ctx:     ctx,
+		config:  cfg,
+		Message: NewMessageClient(cfg),
+		Queue:   NewQueueClient(cfg),
+		User:    NewUserClient(cfg),
 	}, nil
 }
 
@@ -100,18 +100,18 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:          ctx,
-		config:       cfg,
-		Queue:        NewQueueClient(cfg),
-		QueueMessage: NewQueueMessageClient(cfg),
-		User:         NewUserClient(cfg),
+		ctx:     ctx,
+		config:  cfg,
+		Message: NewMessageClient(cfg),
+		Queue:   NewQueueClient(cfg),
+		User:    NewUserClient(cfg),
 	}, nil
 }
 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		Queue.
+//		Message.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -133,9 +133,115 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
+	c.Message.Use(hooks...)
 	c.Queue.Use(hooks...)
-	c.QueueMessage.Use(hooks...)
 	c.User.Use(hooks...)
+}
+
+// MessageClient is a client for the Message schema.
+type MessageClient struct {
+	config
+}
+
+// NewMessageClient returns a client for the Message from the given config.
+func NewMessageClient(c config) *MessageClient {
+	return &MessageClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `message.Hooks(f(g(h())))`.
+func (c *MessageClient) Use(hooks ...Hook) {
+	c.hooks.Message = append(c.hooks.Message, hooks...)
+}
+
+// Create returns a builder for creating a Message entity.
+func (c *MessageClient) Create() *MessageCreate {
+	mutation := newMessageMutation(c.config, OpCreate)
+	return &MessageCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Message entities.
+func (c *MessageClient) CreateBulk(builders ...*MessageCreate) *MessageCreateBulk {
+	return &MessageCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Message.
+func (c *MessageClient) Update() *MessageUpdate {
+	mutation := newMessageMutation(c.config, OpUpdate)
+	return &MessageUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *MessageClient) UpdateOne(m *Message) *MessageUpdateOne {
+	mutation := newMessageMutation(c.config, OpUpdateOne, withMessage(m))
+	return &MessageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *MessageClient) UpdateOneID(id uuid.UUID) *MessageUpdateOne {
+	mutation := newMessageMutation(c.config, OpUpdateOne, withMessageID(id))
+	return &MessageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Message.
+func (c *MessageClient) Delete() *MessageDelete {
+	mutation := newMessageMutation(c.config, OpDelete)
+	return &MessageDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *MessageClient) DeleteOne(m *Message) *MessageDeleteOne {
+	return c.DeleteOneID(m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *MessageClient) DeleteOneID(id uuid.UUID) *MessageDeleteOne {
+	builder := c.Delete().Where(message.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &MessageDeleteOne{builder}
+}
+
+// Query returns a query builder for Message.
+func (c *MessageClient) Query() *MessageQuery {
+	return &MessageQuery{
+		config: c.config,
+	}
+}
+
+// Get returns a Message entity by its id.
+func (c *MessageClient) Get(ctx context.Context, id uuid.UUID) (*Message, error) {
+	return c.Query().Where(message.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *MessageClient) GetX(ctx context.Context, id uuid.UUID) *Message {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryQueue queries the queue edge of a Message.
+func (c *MessageClient) QueryQueue(m *Message) *QueueQuery {
+	query := &QueueQuery{config: c.config}
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(message.Table, message.FieldID, id),
+			sqlgraph.To(queue.Table, queue.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, message.QueueTable, message.QueuePrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *MessageClient) Hooks() []Hook {
+	return c.hooks.Message
 }
 
 // QueueClient is a client for the Queue schema.
@@ -240,13 +346,13 @@ func (c *QueueClient) QueryUser(q *Queue) *UserQuery {
 }
 
 // QueryMessages queries the messages edge of a Queue.
-func (c *QueueClient) QueryMessages(q *Queue) *QueueMessageQuery {
-	query := &QueueMessageQuery{config: c.config}
+func (c *QueueClient) QueryMessages(q *Queue) *MessageQuery {
+	query := &MessageQuery{config: c.config}
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := q.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(queue.Table, queue.FieldID, id),
-			sqlgraph.To(queuemessage.Table, queuemessage.FieldID),
+			sqlgraph.To(message.Table, message.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, queue.MessagesTable, queue.MessagesPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(q.driver.Dialect(), step)
@@ -258,112 +364,6 @@ func (c *QueueClient) QueryMessages(q *Queue) *QueueMessageQuery {
 // Hooks returns the client hooks.
 func (c *QueueClient) Hooks() []Hook {
 	return c.hooks.Queue
-}
-
-// QueueMessageClient is a client for the QueueMessage schema.
-type QueueMessageClient struct {
-	config
-}
-
-// NewQueueMessageClient returns a client for the QueueMessage from the given config.
-func NewQueueMessageClient(c config) *QueueMessageClient {
-	return &QueueMessageClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `queuemessage.Hooks(f(g(h())))`.
-func (c *QueueMessageClient) Use(hooks ...Hook) {
-	c.hooks.QueueMessage = append(c.hooks.QueueMessage, hooks...)
-}
-
-// Create returns a builder for creating a QueueMessage entity.
-func (c *QueueMessageClient) Create() *QueueMessageCreate {
-	mutation := newQueueMessageMutation(c.config, OpCreate)
-	return &QueueMessageCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of QueueMessage entities.
-func (c *QueueMessageClient) CreateBulk(builders ...*QueueMessageCreate) *QueueMessageCreateBulk {
-	return &QueueMessageCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for QueueMessage.
-func (c *QueueMessageClient) Update() *QueueMessageUpdate {
-	mutation := newQueueMessageMutation(c.config, OpUpdate)
-	return &QueueMessageUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *QueueMessageClient) UpdateOne(qm *QueueMessage) *QueueMessageUpdateOne {
-	mutation := newQueueMessageMutation(c.config, OpUpdateOne, withQueueMessage(qm))
-	return &QueueMessageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *QueueMessageClient) UpdateOneID(id uuid.UUID) *QueueMessageUpdateOne {
-	mutation := newQueueMessageMutation(c.config, OpUpdateOne, withQueueMessageID(id))
-	return &QueueMessageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for QueueMessage.
-func (c *QueueMessageClient) Delete() *QueueMessageDelete {
-	mutation := newQueueMessageMutation(c.config, OpDelete)
-	return &QueueMessageDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *QueueMessageClient) DeleteOne(qm *QueueMessage) *QueueMessageDeleteOne {
-	return c.DeleteOneID(qm.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *QueueMessageClient) DeleteOneID(id uuid.UUID) *QueueMessageDeleteOne {
-	builder := c.Delete().Where(queuemessage.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &QueueMessageDeleteOne{builder}
-}
-
-// Query returns a query builder for QueueMessage.
-func (c *QueueMessageClient) Query() *QueueMessageQuery {
-	return &QueueMessageQuery{
-		config: c.config,
-	}
-}
-
-// Get returns a QueueMessage entity by its id.
-func (c *QueueMessageClient) Get(ctx context.Context, id uuid.UUID) (*QueueMessage, error) {
-	return c.Query().Where(queuemessage.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *QueueMessageClient) GetX(ctx context.Context, id uuid.UUID) *QueueMessage {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// QueryQueue queries the queue edge of a QueueMessage.
-func (c *QueueMessageClient) QueryQueue(qm *QueueMessage) *QueueQuery {
-	query := &QueueQuery{config: c.config}
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := qm.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(queuemessage.Table, queuemessage.FieldID, id),
-			sqlgraph.To(queue.Table, queue.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, queuemessage.QueueTable, queuemessage.QueuePrimaryKey...),
-		)
-		fromV = sqlgraph.Neighbors(qm.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// Hooks returns the client hooks.
-func (c *QueueMessageClient) Hooks() []Hook {
-	return c.hooks.QueueMessage
 }
 
 // UserClient is a client for the User schema.

@@ -3,7 +3,7 @@
 package ent
 
 import (
-	"_models/ent/queuemessage"
+	"_models/ent/message"
 	"fmt"
 	"strings"
 	"time"
@@ -12,8 +12,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// QueueMessage is the model entity for the QueueMessage schema.
-type QueueMessage struct {
+// Message is the model entity for the Message schema.
+type Message struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
@@ -30,12 +30,12 @@ type QueueMessage struct {
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
-	// The values are being populated by the QueueMessageQuery when eager-loading is set.
-	Edges QueueMessageEdges `json:"edges"`
+	// The values are being populated by the MessageQuery when eager-loading is set.
+	Edges MessageEdges `json:"edges"`
 }
 
-// QueueMessageEdges holds the relations/edges for other nodes in the graph.
-type QueueMessageEdges struct {
+// MessageEdges holds the relations/edges for other nodes in the graph.
+type MessageEdges struct {
 	// Queue holds the value of the queue edge.
 	Queue []*Queue `json:"queue,omitempty"`
 	// loadedTypes holds the information for reporting if a
@@ -45,7 +45,7 @@ type QueueMessageEdges struct {
 
 // QueueOrErr returns the Queue value or an error if the edge
 // was not loaded in eager-loading.
-func (e QueueMessageEdges) QueueOrErr() ([]*Queue, error) {
+func (e MessageEdges) QueueOrErr() ([]*Queue, error) {
 	if e.loadedTypes[0] {
 		return e.Queue, nil
 	}
@@ -53,134 +53,134 @@ func (e QueueMessageEdges) QueueOrErr() ([]*Queue, error) {
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
-func (*QueueMessage) scanValues(columns []string) ([]any, error) {
+func (*Message) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case queuemessage.FieldMaxRetries:
+		case message.FieldMaxRetries:
 			values[i] = new(sql.NullInt64)
-		case queuemessage.FieldBody, queuemessage.FieldContentType, queuemessage.FieldStatus:
+		case message.FieldBody, message.FieldContentType, message.FieldStatus:
 			values[i] = new(sql.NullString)
-		case queuemessage.FieldAvailableFrom, queuemessage.FieldCreatedAt:
+		case message.FieldAvailableFrom, message.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
-		case queuemessage.FieldID:
+		case message.FieldID:
 			values[i] = new(uuid.UUID)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type QueueMessage", columns[i])
+			return nil, fmt.Errorf("unexpected column %q for type Message", columns[i])
 		}
 	}
 	return values, nil
 }
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
-// to the QueueMessage fields.
-func (qm *QueueMessage) assignValues(columns []string, values []any) error {
+// to the Message fields.
+func (m *Message) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
 	for i := range columns {
 		switch columns[i] {
-		case queuemessage.FieldID:
+		case message.FieldID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
-				qm.ID = *value
+				m.ID = *value
 			}
-		case queuemessage.FieldBody:
+		case message.FieldBody:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field body", values[i])
 			} else if value.Valid {
-				qm.Body = value.String
+				m.Body = value.String
 			}
-		case queuemessage.FieldContentType:
+		case message.FieldContentType:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field content_type", values[i])
 			} else if value.Valid {
-				qm.ContentType = value.String
+				m.ContentType = value.String
 			}
-		case queuemessage.FieldStatus:
+		case message.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
-				qm.Status = value.String
+				m.Status = value.String
 			}
-		case queuemessage.FieldMaxRetries:
+		case message.FieldMaxRetries:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field max_retries", values[i])
 			} else if value.Valid {
-				qm.MaxRetries = uint(value.Int64)
+				m.MaxRetries = uint(value.Int64)
 			}
-		case queuemessage.FieldAvailableFrom:
+		case message.FieldAvailableFrom:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field available_from", values[i])
 			} else if value.Valid {
-				qm.AvailableFrom = value.Time
+				m.AvailableFrom = value.Time
 			}
-		case queuemessage.FieldCreatedAt:
+		case message.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				qm.CreatedAt = value.Time
+				m.CreatedAt = value.Time
 			}
 		}
 	}
 	return nil
 }
 
-// QueryQueue queries the "queue" edge of the QueueMessage entity.
-func (qm *QueueMessage) QueryQueue() *QueueQuery {
-	return (&QueueMessageClient{config: qm.config}).QueryQueue(qm)
+// QueryQueue queries the "queue" edge of the Message entity.
+func (m *Message) QueryQueue() *QueueQuery {
+	return (&MessageClient{config: m.config}).QueryQueue(m)
 }
 
-// Update returns a builder for updating this QueueMessage.
-// Note that you need to call QueueMessage.Unwrap() before calling this method if this QueueMessage
+// Update returns a builder for updating this Message.
+// Note that you need to call Message.Unwrap() before calling this method if this Message
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (qm *QueueMessage) Update() *QueueMessageUpdateOne {
-	return (&QueueMessageClient{config: qm.config}).UpdateOne(qm)
+func (m *Message) Update() *MessageUpdateOne {
+	return (&MessageClient{config: m.config}).UpdateOne(m)
 }
 
-// Unwrap unwraps the QueueMessage entity that was returned from a transaction after it was closed,
+// Unwrap unwraps the Message entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (qm *QueueMessage) Unwrap() *QueueMessage {
-	_tx, ok := qm.config.driver.(*txDriver)
+func (m *Message) Unwrap() *Message {
+	_tx, ok := m.config.driver.(*txDriver)
 	if !ok {
-		panic("ent: QueueMessage is not a transactional entity")
+		panic("ent: Message is not a transactional entity")
 	}
-	qm.config.driver = _tx.drv
-	return qm
+	m.config.driver = _tx.drv
+	return m
 }
 
 // String implements the fmt.Stringer.
-func (qm *QueueMessage) String() string {
+func (m *Message) String() string {
 	var builder strings.Builder
-	builder.WriteString("QueueMessage(")
-	builder.WriteString(fmt.Sprintf("id=%v, ", qm.ID))
+	builder.WriteString("Message(")
+	builder.WriteString(fmt.Sprintf("id=%v, ", m.ID))
 	builder.WriteString("body=")
-	builder.WriteString(qm.Body)
+	builder.WriteString(m.Body)
 	builder.WriteString(", ")
 	builder.WriteString("content_type=")
-	builder.WriteString(qm.ContentType)
+	builder.WriteString(m.ContentType)
 	builder.WriteString(", ")
 	builder.WriteString("status=")
-	builder.WriteString(qm.Status)
+	builder.WriteString(m.Status)
 	builder.WriteString(", ")
 	builder.WriteString("max_retries=")
-	builder.WriteString(fmt.Sprintf("%v", qm.MaxRetries))
+	builder.WriteString(fmt.Sprintf("%v", m.MaxRetries))
 	builder.WriteString(", ")
 	builder.WriteString("available_from=")
-	builder.WriteString(qm.AvailableFrom.Format(time.ANSIC))
+	builder.WriteString(m.AvailableFrom.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
-	builder.WriteString(qm.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(m.CreatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }
 
-// QueueMessages is a parsable slice of QueueMessage.
-type QueueMessages []*QueueMessage
+// Messages is a parsable slice of Message.
+type Messages []*Message
 
-func (qm QueueMessages) config(cfg config) {
-	for _i := range qm {
-		qm[_i].config = cfg
+func (m Messages) config(cfg config) {
+	for _i := range m {
+		m[_i].config = cfg
 	}
 }

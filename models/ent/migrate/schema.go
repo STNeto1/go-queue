@@ -8,6 +8,22 @@ import (
 )
 
 var (
+	// MessagesColumns holds the columns for the "messages" table.
+	MessagesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "body", Type: field.TypeString, Size: 2147483647},
+		{Name: "content_type", Type: field.TypeString},
+		{Name: "status", Type: field.TypeString, Default: "pending"},
+		{Name: "max_retries", Type: field.TypeUint, Default: 5},
+		{Name: "available_from", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// MessagesTable holds the schema information for the "messages" table.
+	MessagesTable = &schema.Table{
+		Name:       "messages",
+		Columns:    MessagesColumns,
+		PrimaryKey: []*schema.Column{MessagesColumns[0]},
+	}
 	// QueuesColumns holds the columns for the "queues" table.
 	QueuesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -20,22 +36,6 @@ var (
 		Name:       "queues",
 		Columns:    QueuesColumns,
 		PrimaryKey: []*schema.Column{QueuesColumns[0]},
-	}
-	// QueueMessagesColumns holds the columns for the "queue_messages" table.
-	QueueMessagesColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID},
-		{Name: "body", Type: field.TypeString, Size: 2147483647},
-		{Name: "content_type", Type: field.TypeString},
-		{Name: "status", Type: field.TypeString, Default: "pending"},
-		{Name: "max_retries", Type: field.TypeUint, Default: 5},
-		{Name: "available_from", Type: field.TypeTime},
-		{Name: "created_at", Type: field.TypeTime},
-	}
-	// QueueMessagesTable holds the schema information for the "queue_messages" table.
-	QueueMessagesTable = &schema.Table{
-		Name:       "queue_messages",
-		Columns:    QueueMessagesColumns,
-		PrimaryKey: []*schema.Column{QueueMessagesColumns[0]},
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
@@ -54,7 +54,7 @@ var (
 	// QueueMessagesColumns holds the columns for the "queue_messages" table.
 	QueueMessagesColumns = []*schema.Column{
 		{Name: "queue_id", Type: field.TypeUUID},
-		{Name: "queue_message_id", Type: field.TypeUUID},
+		{Name: "message_id", Type: field.TypeUUID},
 	}
 	// QueueMessagesTable holds the schema information for the "queue_messages" table.
 	QueueMessagesTable = &schema.Table{
@@ -69,9 +69,9 @@ var (
 				OnDelete:   schema.Cascade,
 			},
 			{
-				Symbol:     "queue_messages_queue_message_id",
+				Symbol:     "queue_messages_message_id",
 				Columns:    []*schema.Column{QueueMessagesColumns[1]},
-				RefColumns: []*schema.Column{QueueMessagesColumns[0]},
+				RefColumns: []*schema.Column{MessagesColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
 		},
@@ -103,8 +103,8 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		MessagesTable,
 		QueuesTable,
-		QueueMessagesTable,
 		UsersTable,
 		QueueMessagesTable,
 		UserQueuesTable,
@@ -113,7 +113,7 @@ var (
 
 func init() {
 	QueueMessagesTable.ForeignKeys[0].RefTable = QueuesTable
-	QueueMessagesTable.ForeignKeys[1].RefTable = QueueMessagesTable
+	QueueMessagesTable.ForeignKeys[1].RefTable = MessagesTable
 	UserQueuesTable.ForeignKeys[0].RefTable = UsersTable
 	UserQueuesTable.ForeignKeys[1].RefTable = QueuesTable
 }

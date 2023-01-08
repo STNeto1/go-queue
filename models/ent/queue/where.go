@@ -371,7 +371,7 @@ func HasMessages() predicate.Queue {
 }
 
 // HasMessagesWith applies the HasEdge predicate on the "messages" edge with a given conditions (other predicates).
-func HasMessagesWith(preds ...predicate.QueueMessage) predicate.Queue {
+func HasMessagesWith(preds ...predicate.Message) predicate.Queue {
 	return predicate.Queue(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),

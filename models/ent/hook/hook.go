@@ -8,6 +8,19 @@ import (
 	"fmt"
 )
 
+// The MessageFunc type is an adapter to allow the use of ordinary
+// function as Message mutator.
+type MessageFunc func(context.Context, *ent.MessageMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f MessageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	mv, ok := m.(*ent.MessageMutation)
+	if !ok {
+		return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MessageMutation", m)
+	}
+	return f(ctx, mv)
+}
+
 // The QueueFunc type is an adapter to allow the use of ordinary
 // function as Queue mutator.
 type QueueFunc func(context.Context, *ent.QueueMutation) (ent.Value, error)
@@ -17,19 +30,6 @@ func (f QueueFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 	mv, ok := m.(*ent.QueueMutation)
 	if !ok {
 		return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.QueueMutation", m)
-	}
-	return f(ctx, mv)
-}
-
-// The QueueMessageFunc type is an adapter to allow the use of ordinary
-// function as QueueMessage mutator.
-type QueueMessageFunc func(context.Context, *ent.QueueMessageMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f QueueMessageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	mv, ok := m.(*ent.QueueMessageMutation)
-	if !ok {
-		return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.QueueMessageMutation", m)
 	}
 	return f(ctx, mv)
 }

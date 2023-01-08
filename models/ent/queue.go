@@ -33,7 +33,7 @@ type QueueEdges struct {
 	// User holds the value of the user edge.
 	User []*User `json:"user,omitempty"`
 	// Messages holds the value of the messages edge.
-	Messages []*QueueMessage `json:"messages,omitempty"`
+	Messages []*Message `json:"messages,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [2]bool
@@ -50,7 +50,7 @@ func (e QueueEdges) UserOrErr() ([]*User, error) {
 
 // MessagesOrErr returns the Messages value or an error if the edge
 // was not loaded in eager-loading.
-func (e QueueEdges) MessagesOrErr() ([]*QueueMessage, error) {
+func (e QueueEdges) MessagesOrErr() ([]*Message, error) {
 	if e.loadedTypes[1] {
 		return e.Messages, nil
 	}
@@ -118,7 +118,7 @@ func (q *Queue) QueryUser() *UserQuery {
 }
 
 // QueryMessages queries the "messages" edge of the Queue entity.
-func (q *Queue) QueryMessages() *QueueMessageQuery {
+func (q *Queue) QueryMessages() *MessageQuery {
 	return (&QueueClient{config: q.config}).QueryMessages(q)
 }
 

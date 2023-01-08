@@ -3,8 +3,8 @@
 package ent
 
 import (
+	"_models/ent/message"
 	"_models/ent/queue"
-	"_models/ent/queuemessage"
 	"_models/ent/user"
 	"context"
 	"errors"
@@ -86,17 +86,17 @@ func (qc *QueueCreate) AddUser(u ...*User) *QueueCreate {
 	return qc.AddUserIDs(ids...)
 }
 
-// AddMessageIDs adds the "messages" edge to the QueueMessage entity by IDs.
+// AddMessageIDs adds the "messages" edge to the Message entity by IDs.
 func (qc *QueueCreate) AddMessageIDs(ids ...uuid.UUID) *QueueCreate {
 	qc.mutation.AddMessageIDs(ids...)
 	return qc
 }
 
-// AddMessages adds the "messages" edges to the QueueMessage entity.
-func (qc *QueueCreate) AddMessages(q ...*QueueMessage) *QueueCreate {
-	ids := make([]uuid.UUID, len(q))
-	for i := range q {
-		ids[i] = q[i].ID
+// AddMessages adds the "messages" edges to the Message entity.
+func (qc *QueueCreate) AddMessages(m ...*Message) *QueueCreate {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
 	}
 	return qc.AddMessageIDs(ids...)
 }
@@ -280,7 +280,7 @@ func (qc *QueueCreate) createSpec() (*Queue, *sqlgraph.CreateSpec) {
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeUUID,
-					Column: queuemessage.FieldID,
+					Column: message.FieldID,
 				},
 			},
 		}
