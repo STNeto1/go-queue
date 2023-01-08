@@ -3,7 +3,6 @@ package message
 import (
 	lib "_lib"
 	"_models/ent"
-	"_models/ent/message"
 	"_models/ent/schema"
 	"context"
 	"database/sql"
@@ -27,21 +26,10 @@ func (m *MessageService) ReturnMessage(ctx context.Context, payload *ReturnMessa
 		return nil, err
 	}
 
-	msg, err := tx.Message.
-		Query().
-		Where(message.IDEQ(payload.MessageID)).
-		WithQueue(func(qq *ent.QueueQuery) {
-			qq.WithUser()
-		}).
-		Only(ctx)
+	msg, err := m.GetMessageFromUserQueue(ctx, tx, payload.User, payload.MessageID)
 	if err != nil {
 		m.logger.Error("failed to get message", zap.Error(err))
 		return nil, lib.Rollback(tx, errors.New("failed to get message"))
-	}
-
-	if msg.Edges.Queue.Edges.User.ID != payload.User.ID {
-		m.logger.Error("user is not the owner of the queue")
-		return nil, lib.Rollback(tx, errors.New("user is not the owner of the queue"))
 	}
 
 	status := schema.QueueMessageStatusProcessing

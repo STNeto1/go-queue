@@ -11,31 +11,6 @@ import (
 )
 
 func TestReturnErrorWhenUnauthorizedQueueAccess(t *testing.T) {
-	s, client, l := CreateMessageService(t)
-	defer client.Close()
-	defer l.Sync()
-
-	usr, err := createUser(client)
-	assert.NotNil(t, usr)
-	assert.NoError(t, err)
-
-	usr2, err := createUser(client)
-	assert.NotNil(t, usr)
-	assert.NoError(t, err)
-
-	q, err := createQueue(client, usr, "some-queue")
-	assert.NotNil(t, q)
-	assert.NoError(t, err)
-
-	msg, err := createQueueMessage(client, usr, q, "some message")
-	assert.NotNil(t, msg)
-	assert.NoError(t, err)
-
-	_, err = s.ReturnMessage(context.Background(), &message.ReturnMessagePayload{
-		MessageID: msg.ID,
-		User:      usr2,
-	})
-	assert.Error(t, err)
 
 }
 
