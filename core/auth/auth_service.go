@@ -30,3 +30,7 @@ func (s *AuthService) GetUserFromId(ctx context.Context, id uuid.UUID) (*ent.Use
 
 	return usr, nil
 }
+
+func (s *AuthService) GetSecret() string {
+	return s.secret
+}
