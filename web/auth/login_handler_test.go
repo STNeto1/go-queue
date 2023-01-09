@@ -10,7 +10,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -99,8 +98,6 @@ func TestLoginHandlerSuccess(t *testing.T) {
 	rec := httptest.NewRecorder()
 
 	router.Engine.ServeHTTP(rec, req)
-
-	log.Println(rec.Body.String())
 
 	assert.Equal(t, http.StatusCreated, rec.Code)
 }

@@ -16,5 +16,6 @@ func SetupAuthRoutes(as *auth.AuthService, r *echo.Echo) {
 	group := r.Group("/auth")
 
 	group.POST("/login", localRouter.LoginHandler)
+	group.POST("/register", localRouter.RegisterHandler)
 
 }

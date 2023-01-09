@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"_core/auth"
 	lib "_lib"
 	"net/http"
 
@@ -8,13 +9,14 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type LoginRequestBody struct {
+type RegisterRequestBody struct {
+	Name     string `json:"name" validate:"required"`
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required"`
 }
 
-func (router AuthRouter) LoginHandler(c echo.Context) error {
-	body := new(LoginRequestBody)
+func (router AuthRouter) RegisterHandler(c echo.Context) error {
+	body := new(RegisterRequestBody)
 
 	if err := c.Bind(body); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, lib.BadRequest{
@@ -22,6 +24,7 @@ func (router AuthRouter) LoginHandler(c echo.Context) error {
 			StatusCode: http.StatusBadRequest,
 		})
 	}
+
 	if err := c.Validate(body); err != nil {
 		errors := lib.ParseValidatorErrors(err)
 		return echo.NewHTTPError(http.StatusBadRequest, lib.BadValidation{
@@ -31,7 +34,11 @@ func (router AuthRouter) LoginHandler(c echo.Context) error {
 		})
 	}
 
-	usr, err := router.as.LoginUser(c.Request().Context(), body.Email, body.Password)
+	usr, err := router.as.RegisterUser(c.Request().Context(), auth.RegisterUserPayload{
+		Name:     body.Name,
+		Email:    body.Email,
+		Password: body.Password,
+	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, lib.BadRequest{
 			Message:    "Invalid Credentials",
