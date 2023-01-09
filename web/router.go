@@ -2,27 +2,27 @@ package web
 
 import (
 	"_core/auth"
+	lib "_lib"
 	ar "_web/auth"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+	"github.com/labstack/echo/v4"
 )
 
 type Router struct {
-	Engine *gin.Engine
+	Engine *echo.Echo
 
 	AS *auth.AuthService
 }
 
 func NewRouter(AS *auth.AuthService) *Router {
-	r := gin.Default()
+	ec := echo.New()
+	ec.Validator = &lib.CustomValidator{Validator: validator.New()}
 
-	r.Use(gin.Logger())
-	r.Use(gin.Recovery())
-
-	ar.SetupAuthRoutes(AS, r)
+	ar.SetupAuthRoutes(AS, ec)
 
 	return &Router{
-		Engine: r,
+		Engine: ec,
 		AS:     AS,
 	}
 

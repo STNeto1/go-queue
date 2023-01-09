@@ -10,11 +10,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/labstack/echo/v4"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
@@ -84,16 +87,20 @@ func TestLoginHandlerSuccess(t *testing.T) {
 
 	usr := createUser(t, client)
 
-	w := httptest.NewRecorder()
-
 	body := am.LoginRequestBody{
 		Email:    usr.Email,
 		Password: "some-password",
 	}
-	jsonValue, _ := json.Marshal(body)
-	req := httptest.NewRequest("POST", "/auth/login", bytes.NewBuffer(jsonValue))
+	jsonVal, _ := json.Marshal(body)
 
-	router.Engine.ServeHTTP(w, req)
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", strings.NewReader(string(jsonVal)))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 
-	assert.Equal(t, http.StatusCreated, w.Code)
+	rec := httptest.NewRecorder()
+
+	router.Engine.ServeHTTP(rec, req)
+
+	log.Println(rec.Body.String())
+
+	assert.Equal(t, http.StatusCreated, rec.Code)
 }
