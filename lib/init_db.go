@@ -3,6 +3,7 @@ package lib
 import (
 	"_models/ent"
 	"context"
+	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 )
 

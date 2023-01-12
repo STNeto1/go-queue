@@ -20,7 +20,7 @@ func TestSetupRouter(t *testing.T) {
 	as := auth.NewAuthService(client, "some-secret", logger)
 	assert.NotNil(t, as)
 
-	router := web.NewRouter(as)
+	router := web.NewRouter(as, logger)
 
 	assert.NotNil(t, router)
 }
